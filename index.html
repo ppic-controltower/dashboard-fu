@@ -19,7 +19,7 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
 .kpi{border-left:4px solid var(--c);padding:10px 14px}
 .kpi .n{font-size:1.6rem;font-weight:700;line-height:1.1}
 .kpi small{color:#64748b;font-weight:600}
-.chart-box{position:relative;height:260px}
+.chart-box{position:relative;height:220px}
 .table-wrap{max-height:55vh;overflow:auto}
 .table{font-size:.82rem;white-space:nowrap;border-collapse:separate;border-spacing:0}
 .table thead th{position:sticky;top:0;background:#f8fafc;z-index:5;cursor:pointer;user-select:none;border-bottom:2px solid #e2e8f0;color:#475569}
@@ -78,6 +78,22 @@ body.collapsed .toolbar{padding-left:50px}
 .toolbar{display:flex;justify-content:space-between;align-items:center;min-height:36px;margin-bottom:12px}
 .upd-info{font-size:.85rem;color:#64748b}
 .upd-info b{color:#334155}
+
+:root{--sb-bg:#e8eff8;--sb-text:#475569;--sb-hover:#d5e3f5;--sb-line:#d3dfee;--sb-title:#0f3a66;--sb-accent:#0284c7}
+#sidebar{background:var(--sb-bg);color:var(--sb-text);border-right:1px solid var(--sb-line)}
+#sidebar .brand{color:var(--sb-title);border-bottom:1px solid var(--sb-line)}
+#sidebar .brand>i{color:var(--sb-accent)}
+.t1{color:var(--sb-title)}.t2{color:var(--sb-accent)}
+.mi{color:var(--sb-text)}.mi:hover{background:var(--sb-hover);color:var(--sb-title)}
+.mi.active{background:var(--sb-accent);color:#fff}
+.sb-btn{color:#64748b}.sb-btn:hover{background:var(--sb-hover);color:var(--sb-title)}
+.dleg{margin-top:10px;text-align:left}
+.lg{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:.8rem}
+.lg:hover{background:#f1f5f9}.lg.on{background:#e0f2fe}
+.lg .sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.lg .nm{flex:1;color:#475569}
+.lg b{min-width:28px;text-align:right;color:#1e293b}
+.lg .pc{min-width:40px;text-align:right;color:#64748b}
 </style>
 </head>
 <body>
@@ -115,7 +131,7 @@ body.collapsed .toolbar{padding-left:50px}
               <div class="col-12 col-md-3"><label class="form-label small fw-semibold text-secondary">Status By Controller</label>
                 <select id="fStatus" class="form-select form-select-sm" onchange="apply()"></select></div>
               <div class="col-12 col-md-3"><label class="form-label small fw-semibold text-secondary">No PO</label>
-                <select id="fPO" class="form-select form-select-sm" onchange="apply()"></select></div>
+                <input id="fPO" class="form-control form-control-sm" list="poList" placeholder="Pilih / ketik No PO" autocomplete="off" oninput="debouncedApply()"><datalist id="poList"></datalist></div>
               <div class="col-12 col-md-3"><label class="form-label small fw-semibold text-secondary">Cari (semua kolom)</label>
                 <input id="fSearch" class="form-control form-control-sm" placeholder="item, produk, principle..." oninput="debouncedApply()"></div>
               <div class="col-12 text-end">
@@ -128,6 +144,7 @@ body.collapsed .toolbar{padding-left:50px}
           <div class="card card-custom p-3 text-center">
             <h6 class="fw-bold text-secondary small mb-2"><i class="fa-solid fa-chart-pie me-1"></i>Ringkasan Status By Controller <span class="text-muted fw-normal">(klik untuk filter)</span></h6>
             <div class="chart-box"><canvas id="donut"></canvas></div>
+            <div id="donutLegend" class="dleg"></div>
           </div>
         </div>
       </div>
@@ -249,11 +266,11 @@ setInterval(checkVersion,CHECK_EVERY);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkVersion()});
 
 /* ===== FILTER (cascading) ===== */
-function fv(){return{area:$('fArea').value,ctrl:$('fStatus').value,po:$('fPO').value,q:$('fSearch').value.trim().toLowerCase()}}
+function fv(){return{area:$('fArea').value,ctrl:$('fStatus').value,po:$('fPO').value.trim().toLowerCase(),q:$('fSearch').value.trim().toLowerCase()}}
 function match(r,f,skip){
   return (skip==='area'||!f.area||r[IDX.area]===f.area)
     &&(skip==='ctrl'||!f.ctrl||r[IDX.ctrl]===f.ctrl)
-    &&(skip==='po'||!f.po||r[IDX.po]===f.po)
+    &&(skip==='po'||!f.po||String(r[IDX.po]).toLowerCase().includes(f.po))
     &&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
 }
 function fill(id,vals,sel,label){
@@ -264,7 +281,7 @@ function populate(){
   const f=fv();
   fill('fArea',ROWS.filter(r=>match(r,f,'area')).map(r=>r[IDX.area]),f.area,'-- Semua Area --');
   fill('fStatus',ROWS.filter(r=>match(r,f,'ctrl')).map(r=>r[IDX.ctrl]),f.ctrl,'-- Semua Status --');
-  fill('fPO',ROWS.filter(r=>match(r,f,'po')).map(r=>r[IDX.po]),f.po,'-- Semua No PO --');
+  $('poList').innerHTML=[...new Set(ROWS.filter(r=>match(r,f,'po')).map(r=>r[IDX.po]).filter(Boolean))].sort().map(v=>'<option value="'+esc(v)+'">').join('');
 }
 function apply(){
   VIEW=ROWS.filter(r=>match(r,fv()));
@@ -290,7 +307,7 @@ function renderKPI(){
   const c={danger:0,success:0,warning:0,other:0};VIEW.forEach(r=>c[cls(r[IDX.ctrl])]++);
   const late=VIEW.filter(isLate).length;
   const k=(label,n,color)=>'<div class="col-6 col-lg"><div class="card card-custom kpi mb-0" style="--c:'+color+'"><small>'+label+'</small><div class="n">'+n+'</div></div></div>';
-  $('kpiRow').innerHTML=k('Total Baris PO',VIEW.length,'#0284c7')+k('Need FU Vendor (Over Due)',c.danger,COLOR.danger)
+  $('kpiRow').innerHTML=k('Need FU Vendor (Over Due)',c.danger,COLOR.danger)
     +k('Proses Pengiriman',c.success,COLOR.success)+k('Waiting Schedule',c.warning,COLOR.warning)+k('ETA Sudah Lewat',late,'#9333ea');
 }
 function renderHead(){
@@ -310,17 +327,21 @@ function renderTable(){
   }).join('');
 }
 function renderDonut(){
-  const cnt={};VIEW.forEach(r=>{const s=r[IDX.ctrl]||'Tidak Ada Status';cnt[s]=(cnt[s]||0)+1});
-  const labels=Object.keys(cnt);
+  const ord={danger:0,success:1,warning:2,other:3};
+  const all=[...new Set(ROWS.map(r=>r[IDX.ctrl]||'Tidak Ada Status'))].sort((x,y)=>ord[cls(x)]-ord[cls(y)]||x.localeCompare(y));
+  const cnt={};all.forEach(l=>cnt[l]=0);VIEW.forEach(r=>cnt[r[IDX.ctrl]||'Tidak Ada Status']++);
+  const total=VIEW.length,cur=$('fStatus').value;
+  $('donutLegend').innerHTML=all.map(l=>'<div class="lg'+(cur===l?' on':'')+'" data-s="'+esc(l)+'"><span class="sw" style="background:'+COLOR[cls(l)]+'"></span><span class="nm">'+esc(l)+'</span><b>'+cnt[l]+'</b><span class="pc">'+(total?Math.round(cnt[l]/total*100):0)+'%</span></div>').join('');
   if(donut)donut.destroy();
-  if(!labels.length)return;
+  if(!total)return;
   donut=new Chart($('donut'),{type:'doughnut',
-    data:{labels,datasets:[{data:Object.values(cnt),backgroundColor:labels.map(l=>COLOR[cls(l)]),borderWidth:2,borderColor:'#fff'}]},
+    data:{labels:all,datasets:[{data:all.map(l=>cnt[l]),backgroundColor:all.map(l=>COLOR[cls(l)]),borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
-      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
-        tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+' data ('+(c.raw/VIEW.length*100).toFixed(1)+'%)'}}},
-      onClick:(e,els)=>{if(els.length){$('fStatus').value=labels[els[0].index];apply()}}}});
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+' data ('+(c.raw/total*100).toFixed(1)+'%)'}}},
+      onClick:(e,els)=>{if(els.length)toggleStatus(all[els[0].index])}}});
 }
+function toggleStatus(v){$('fStatus').value=($('fStatus').value===v)?'':v;apply()}
+$('donutLegend').addEventListener('click',e=>{const r=e.target.closest('.lg');if(r)toggleStatus(r.dataset.s)});
 
 /* ===== TAB 2: AREA ANALYTICS ===== */
 // Plugin: tampilkan angka di dalam tiap segmen batang
