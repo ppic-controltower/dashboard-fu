@@ -19,7 +19,7 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
 .kpi{border-left:4px solid var(--c);padding:10px 14px}
 .kpi .n{font-size:1.6rem;font-weight:700;line-height:1.1}
 .kpi small{color:#64748b;font-weight:600}
-.chart-box{position:relative;height:220px}
+.chart-box{position:relative;height:250px}
 .table-wrap{max-height:55vh;overflow:auto}
 .table{font-size:.82rem;white-space:nowrap;border-collapse:separate;border-spacing:0}
 .table thead th{position:sticky;top:0;background:#f8fafc;z-index:5;cursor:pointer;user-select:none;border-bottom:2px solid #e2e8f0;color:#475569}
@@ -326,6 +326,27 @@ function renderTable(){
     }).join('')+'</tr>';
   }).join('');
 }
+// Plugin: angka + persen selalu tampil di tiap irisan (tanpa perlu hover)
+const donutLabels={id:'donutLabels',afterDatasetsDraw(chart){
+  const ds=chart.data.datasets[0],total=ds.data.reduce((a,b)=>a+b,0);if(!total)return;
+  const ctx=chart.ctx;ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+  chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+    const v=ds.data[i];if(!v)return;
+    const g=arc.getProps(['x','y','startAngle','endAngle','innerRadius','outerRadius'],true);
+    const ang=(g.startAngle+g.endAngle)/2,pct=Math.round(v/total*100)+'%';
+    if(g.endAngle-g.startAngle>0.45){            // irisan besar: tulis di dalam ring
+      const m=(g.innerRadius+g.outerRadius)/2,x=g.x+Math.cos(ang)*m,y=g.y+Math.sin(ang)*m;
+      ctx.fillStyle=ds.backgroundColor[i]===COLOR.warning?'#000':'#fff';
+      ctx.font='bold 14px sans-serif';ctx.fillText(v,x,y-7);
+      ctx.font='11px sans-serif';ctx.fillText(pct,x,y+8);
+    }else{                                         // irisan kecil: tulis di luar ring
+      const r=g.outerRadius+16;
+      ctx.fillStyle='#334155';ctx.font='bold 12px sans-serif';
+      ctx.fillText(v+' ('+pct+')',g.x+Math.cos(ang)*r,g.y+Math.sin(ang)*r);
+    }
+  });
+  ctx.restore();
+}};
 function renderDonut(){
   const ord={danger:0,success:1,warning:2,other:3};
   const all=[...new Set(ROWS.map(r=>r[IDX.ctrl]||'Tidak Ada Status'))].sort((x,y)=>ord[cls(x)]-ord[cls(y)]||x.localeCompare(y));
@@ -334,9 +355,9 @@ function renderDonut(){
   $('donutLegend').innerHTML=all.map(l=>'<div class="lg'+(cur===l?' on':'')+'" data-s="'+esc(l)+'"><span class="sw" style="background:'+COLOR[cls(l)]+'"></span><span class="nm">'+esc(l)+'</span><b>'+cnt[l]+'</b><span class="pc">'+(total?Math.round(cnt[l]/total*100):0)+'%</span></div>').join('');
   if(donut)donut.destroy();
   if(!total)return;
-  donut=new Chart($('donut'),{type:'doughnut',
+  donut=new Chart($('donut'),{type:'doughnut',plugins:[donutLabels],
     data:{labels:all,datasets:[{data:all.map(l=>cnt[l]),backgroundColor:all.map(l=>COLOR[cls(l)]),borderWidth:2,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',layout:{padding:{top:24,bottom:8,left:30,right:30}},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+' data ('+(c.raw/total*100).toFixed(1)+'%)'}}},
       onClick:(e,els)=>{if(els.length)toggleStatus(all[els[0].index])}}});
 }
