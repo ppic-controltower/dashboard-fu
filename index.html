@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoring Need FU ETA/ETD</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:16px;color:#334155}
+.card-custom{border:none;border-radius:14px;box-shadow:0 4px 20px -2px rgba(15,23,42,.06);background:#fff;margin-bottom:16px}
+.nav-tabs{border-bottom:2px solid #e2e8f0}
+.nav-tabs .nav-link{border:none;color:#64748b;font-weight:600;padding:12px 24px}
+.nav-tabs .nav-link.active{color:#0284c7;background:#fff;border-bottom:3px solid #0284c7}
+.kpi{border-left:4px solid var(--c);padding:10px 14px}
+.kpi .n{font-size:1.6rem;font-weight:700;line-height:1.1}
+.kpi small{color:#64748b;font-weight:600}
+.chart-box{position:relative;height:260px}
+.table-wrap{max-height:55vh;overflow:auto}
+.table{font-size:.82rem;white-space:nowrap;border-collapse:separate;border-spacing:0}
+.table thead th{position:sticky;top:0;background:#f8fafc;z-index:5;cursor:pointer;user-select:none;border-bottom:2px solid #e2e8f0;color:#475569}
+.table thead th:hover{color:#0284c7}
+.late{color:#dc2626;font-weight:700}
+.area-card{cursor:pointer;border:1px solid #e2e8f0;border-radius:12px;padding:8px 12px;transition:.15s}
+.area-card:hover{border-color:#38bdf8;transform:translateY(-1px)}
+.area-card.active{background:#f0f9ff;border:2px solid #0284c7}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.cal-scroll{overflow-x:auto}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:6px;min-width:910px;margin-bottom:6px}
+.cal-head{text-align:center;font-weight:700;font-size:.78rem;background:#f1f5f9;padding:8px;border-radius:8px;text-transform:uppercase}
+.cal-cell{min-height:105px;max-height:190px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:6px;font-size:.72rem}
+.cal-cell.today{border:2px solid #0284c7}
+.cal-num{font-weight:700;color:#64748b}
+.ev{display:block;margin-top:3px;padding:3px 6px;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#fff}
+#loading{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:50;border-radius:14px}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:1055}
+</style>
+</head>
+<body>
+<div class="container-fluid">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="fw-bold m-0"><i class="fa-solid fa-chart-line text-primary me-2"></i>Monitoring Need FU ETA/ETD</h4>
+      <small class="text-muted">Real-time Logistics &amp; Area Analytics Dashboard &middot; Update terakhir: <b id="updatedAt">-</b></small>
+    </div>
+    <button class="btn btn-sm btn-primary px-3 fw-semibold" onclick="load()"><i class="fa-solid fa-rotate me-1"></i>Sync Live Data</button>
+  </div>
+
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><button class="nav-link active" id="tab-monitoring" data-bs-toggle="tab" data-bs-target="#pane-monitoring" type="button"><i class="fa-solid fa-table-list me-2"></i>Data Monitoring &amp; Status</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-schedule" data-bs-toggle="tab" data-bs-target="#pane-schedule" type="button"><i class="fa-solid fa-chart-pie me-2"></i>Area Analytics &amp; Schedule Bulanan</button></li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- TAB 1 -->
+    <div class="tab-pane fade show active" id="pane-monitoring">
+      <div class="row g-3 mb-3" id="kpiRow"></div>
+
+      <div class="row g-3">
+        <div class="col-12 col-lg-8">
+          <div class="card card-custom p-3 h-100 justify-content-center">
+            <div class="row g-3">
+              <div class="col-12 col-md-3"><label class="form-label small fw-semibold text-secondary">Area</label>
+                <select id="fArea" class="form-select form-select-sm" onchange="apply()"></select></div>
+              <div class="col-12 col-md-3"><label class="form-label small fw-semibold text-secondary">Status By Controller</label>
+                <select id="fStatus" class="form-select form-select-sm" onchange="apply()"></select></div>
+              <div class="col-12 col-md-3"><label class="form-label small fw-semibold text-secondary">No PO</label>
+                <select id="fPO" class="form-select form-select-sm" onchange="apply()"></select></div>
+              <div class="col-12 col-md-3"><label class="form-label small fw-semibold text-secondary">Cari (semua kolom)</label>
+                <input id="fSearch" class="form-control form-control-sm" placeholder="item, produk, principle..." oninput="debouncedApply()"></div>
+              <div class="col-12 text-end">
+                <button class="btn btn-sm btn-outline-danger px-4 fw-semibold" onclick="resetFilters()"><i class="fa-solid fa-arrows-rotate me-1"></i>Reset Filter</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="card card-custom p-3 text-center">
+            <h6 class="fw-bold text-secondary small mb-2"><i class="fa-solid fa-chart-pie me-1"></i>Ringkasan Status By Controller <span class="text-muted fw-normal">(klik untuk filter)</span></h6>
+            <div class="chart-box"><canvas id="donut"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small" id="count"></span>
+        <div class="btn-group">
+          <button class="btn btn-success btn-sm" onclick="exportExcel()"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button>
+          <button class="btn btn-danger btn-sm" onclick="exportPDF()"><i class="fa-solid fa-file-pdf me-1"></i>Export PDF</button>
+        </div>
+      </div>
+
+      <div class="card card-custom p-3 position-relative">
+        <div id="loading"><div class="spinner-border text-primary"></div><span class="mt-2 fw-semibold text-secondary" id="loadingText">Menghubungkan ke Google Sheet...</span></div>
+        <div class="table-wrap">
+          <table class="table table-hover align-middle mb-0"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2 -->
+    <div class="tab-pane fade" id="pane-schedule">
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-7"><div class="card card-custom p-3 h-100">
+          <div class="d-flex justify-content-between mb-2">
+            <h6 class="fw-bold m-0"><i class="fa-solid fa-chart-column text-primary me-2"></i>Volume PO Berdasarkan Area</h6>
+            <span class="badge bg-light text-secondary border">Klik batang untuk filter</span>
+          </div>
+          <div style="position:relative;height:300px"><canvas id="areaBar"></canvas></div>
+        </div></div>
+        <div class="col-12 col-lg-5"><div class="card card-custom p-3 h-100">
+          <div class="d-flex justify-content-between mb-2">
+            <h6 class="fw-bold m-0"><i class="fa-solid fa-boxes-stacked text-primary me-2"></i>Breakdown Area &amp; Status</h6>
+            <button class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold" onclick="setArea('')">Reset Filter</button>
+          </div>
+          <div class="d-flex flex-column gap-2 overflow-auto" style="max-height:300px" id="areaCards"></div>
+        </div></div>
+      </div>
+
+      <div class="card card-custom p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="moveMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+            <h6 class="fw-bold m-0" id="calTitle"></h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="moveMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn btn-sm btn-link text-decoration-none" onclick="moveMonth(0)">Bulan ini</button>
+          </div>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6" id="areaBadge">Semua Area</span>
+        </div>
+        <div class="cal-scroll">
+          <div class="cal-grid"><div class="cal-head">Min</div><div class="cal-head">Sen</div><div class="cal-head">Sel</div><div class="cal-head">Rab</div><div class="cal-head">Kam</div><div class="cal-head">Jum</div><div class="cal-head">Sab</div></div>
+          <div class="cal-grid" id="calDays"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container"><div id="toast" class="toast align-items-center border-0 text-bg-primary"><div class="d-flex"><div class="toast-body" id="toastMsg"></div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ===== KONFIGURASI KOLOM =====
+   Dicari berdasarkan NAMA HEADER (aman jika kolom bergeser).
+   [potongan nama header, index cadangan] */
+const COLS = {
+  po:['NO PO',0], area:['AREA',1], principal:['PRINCIP',4], qty:['QTY',10],
+  eta:['ESTIMASI',12], ctrl:['STATUS BY CONTROLLER',16]
+};
+const IDX = {};
+const COLOR = {danger:'#dc2626', success:'#16a34a', warning:'#eab308', other:'#64748b'};
+
+let H=[], ROWS=[], VIEW=[], donut=null, bar=null, areaSel='', sort={col:null,dir:1};
+const today=new Date(); today.setHours(0,0,0,0);
+let calY=today.getFullYear(), calM=today.getMonth();
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let t; const debouncedApply=()=>{clearTimeout(t);t=setTimeout(apply,250)};
+
+function toast(msg,type='primary'){const el=$('toast');el.className='toast align-items-center border-0 text-bg-'+type;$('toastMsg').textContent=msg;new bootstrap.Toast(el).show()}
+function loading(on,txt){$('loading').classList.toggle('d-none',!on);if(txt)$('loadingText').textContent=txt}
+
+function resolveCols(){
+  const up=H.map(h=>h.toUpperCase());
+  for(const k in COLS){const i=up.findIndex(x=>x.includes(COLS[k][0]));IDX[k]=i>=0?i:COLS[k][1]}
+}
+function cls(s){s=String(s||'').toLowerCase();
+  if(s.includes('over due'))return 'danger'; if(s.includes('proses'))return 'success'; if(s.includes('waiting'))return 'warning'; return 'other'}
+function parseDMY(s){if(typeof s!=='string')return null;const p=s.split('/');if(p.length!==3)return null;
+  const d=new Date(+p[2],+p[1]-1,+p[0]);return isNaN(d)?null:d}
+const isLate=r=>{const d=parseDMY(r[IDX.eta]);return d&&d<today};
+
+/* ===== LOAD DATA (via Apps Script API) ===== */
+const API_URL='https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnRNPqWdcObBFQ51SeH1Vgcw-IYCkCjPIUsLElf5lMOsE3g1jRgk5-mXefNyBytd2Hughn7D2LBkXug0RiKAxyobK3EpEqy5eIqLaIEH5gK9otrNjvimxC0jCiTeAQPDcWKruaeicZWM7YvmYCR6BnROWQhkRUgW_dXhb9MFqGMp4DpW-CrNYFBvf30CKztrMyYbAQgqhAiYQMIH-cJOjZG5r34697pOUFHaBG9VZbYCOToE5RP29TRMdUJnrOktho3zmO_bu72ZkWs4EJ_LIHnayEynKA&lib=MRJEcszSci-vmCyKSJsTjjj0KjsGE0Kk6'; // URL yang berakhiran /exec
+const CHECK_EVERY=60000;                       // cek perubahan tiap 60 detik
+let lastVersion=null;
+
+function load(silent){
+  if(!silent)loading(true,'Sinkronisasi data live...');
+  fetch(API_URL).then(r=>r.json()).then(d=>{
+    if(d.error)throw new Error(d.error);
+    if(!d.headers||!d.headers.length){loading(false);toast('Data kosong atau format tidak sesuai.','warning');return}
+    H=d.headers;ROWS=d.rows;lastVersion=d.version;$('updatedAt').textContent=d.updatedAt;
+    resolveCols();apply();loading(false);
+    toast(silent?'Data diperbarui otomatis':'Data live berhasil dimuat!',silent?'info':'success');
+    if($('pane-schedule').classList.contains('active'))renderAnalytics();
+  }).catch(e=>{loading(false);toast('Gagal memuat data: '+e.message,'danger')});
+}
+// Auto-refresh: cek kode versi (ringan), ambil data penuh hanya jika berubah.
+// Filter, sort, dan bulan kalender yang sedang dibuka tidak ter-reset.
+function checkVersion(){
+  if(document.hidden||!lastVersion)return;
+  fetch(API_URL+'?action=version').then(r=>r.json())
+    .then(v=>{if(v.version&&v.version!==lastVersion)load(true)}).catch(()=>{});
+}
+setInterval(checkVersion,CHECK_EVERY);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkVersion()});
+
+/* ===== FILTER (cascading) ===== */
+function fv(){return{area:$('fArea').value,ctrl:$('fStatus').value,po:$('fPO').value,q:$('fSearch').value.trim().toLowerCase()}}
+function match(r,f,skip){
+  return (skip==='area'||!f.area||r[IDX.area]===f.area)
+    &&(skip==='ctrl'||!f.ctrl||r[IDX.ctrl]===f.ctrl)
+    &&(skip==='po'||!f.po||r[IDX.po]===f.po)
+    &&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
+}
+function fill(id,vals,sel,label){
+  const el=$(id);
+  el.innerHTML='<option value="">'+label+'</option>'+[...new Set(vals.filter(Boolean))].sort().map(v=>'<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(v)+'</option>').join('');
+}
+function populate(){
+  const f=fv();
+  fill('fArea',ROWS.filter(r=>match(r,f,'area')).map(r=>r[IDX.area]),f.area,'-- Semua Area --');
+  fill('fStatus',ROWS.filter(r=>match(r,f,'ctrl')).map(r=>r[IDX.ctrl]),f.ctrl,'-- Semua Status --');
+  fill('fPO',ROWS.filter(r=>match(r,f,'po')).map(r=>r[IDX.po]),f.po,'-- Semua No PO --');
+}
+function apply(){
+  VIEW=ROWS.filter(r=>match(r,fv()));
+  populate();sortView();renderTable();renderKPI();renderDonut();
+}
+function resetFilters(){['fArea','fStatus','fPO','fSearch'].forEach(i=>$(i).value='');apply()}
+
+/* ===== SORT ===== */
+function sortBy(c){sort.dir=sort.col===c?-sort.dir:1;sort.col=c;apply()}
+function sortView(){
+  if(sort.col===null)return;const c=sort.col,d=sort.dir;
+  VIEW.sort((a,b)=>{
+    let x=a[c],y=b[c];
+    if(typeof x==='number'&&typeof y==='number')return(x-y)*d;
+    const dx=parseDMY(x),dy=parseDMY(y);
+    if(dx&&dy)return(dx-dy)*d;
+    return String(x).localeCompare(String(y),'id',{numeric:true})*d;
+  });
+}
+
+/* ===== RENDER ===== */
+function renderKPI(){
+  const c={danger:0,success:0,warning:0,other:0};VIEW.forEach(r=>c[cls(r[IDX.ctrl])]++);
+  const late=VIEW.filter(isLate).length;
+  const k=(label,n,color)=>'<div class="col-6 col-lg"><div class="card card-custom kpi mb-0" style="--c:'+color+'"><small>'+label+'</small><div class="n">'+n+'</div></div></div>';
+  $('kpiRow').innerHTML=k('Total Baris PO',VIEW.length,'#0284c7')+k('Need FU Vendor (Over Due)',c.danger,COLOR.danger)
+    +k('Proses Pengiriman',c.success,COLOR.success)+k('Waiting Schedule',c.warning,COLOR.warning)+k('ETA Sudah Lewat',late,'#9333ea');
+}
+function renderHead(){
+  $('thead').innerHTML='<tr>'+H.map((h,i)=>'<th onclick="sortBy('+i+')">'+esc(h)+(sort.col===i?(sort.dir>0?' &#9650;':' &#9660;'):'')+'</th>').join('')+'</tr>';
+}
+function renderTable(){
+  renderHead();
+  $('count').innerHTML='Menampilkan: <b>'+VIEW.length+'</b> dari '+ROWS.length+' baris data';
+  if(!VIEW.length){$('tbody').innerHTML='<tr><td colspan="'+H.length+'" class="text-center text-muted py-4">Tidak ada data yang sesuai filter</td></tr>';return}
+  $('tbody').innerHTML=VIEW.map(r=>{
+    const late=isLate(r);
+    return '<tr>'+r.map((c,i)=>{
+      if(i===IDX.ctrl&&c)return '<td><span class="badge" style="background:'+COLOR[cls(c)]+';color:'+(cls(c)==='warning'?'#000':'#fff')+'">'+esc(c)+'</span></td>';
+      if(i===IDX.eta&&late)return '<td class="late" title="ETA sudah lewat">'+esc(c)+'</td>';
+      return '<td>'+esc(c)+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+}
+function renderDonut(){
+  const cnt={};VIEW.forEach(r=>{const s=r[IDX.ctrl]||'Tidak Ada Status';cnt[s]=(cnt[s]||0)+1});
+  const labels=Object.keys(cnt);
+  if(donut)donut.destroy();
+  if(!labels.length)return;
+  donut=new Chart($('donut'),{type:'doughnut',
+    data:{labels,datasets:[{data:Object.values(cnt),backgroundColor:labels.map(l=>COLOR[cls(l)]),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+' data ('+(c.raw/VIEW.length*100).toFixed(1)+'%)'}}},
+      onClick:(e,els)=>{if(els.length){$('fStatus').value=labels[els[0].index];apply()}}}});
+}
+
+/* ===== TAB 2: AREA ANALYTICS ===== */
+function renderAnalytics(){
+  const st={};
+  ROWS.forEach(r=>{const a=r[IDX.area];if(!a)return;
+    st[a]=st[a]||{total:0,danger:0,success:0,warning:0};st[a].total++;
+    const k=cls(r[IDX.ctrl]);if(st[a][k]!==undefined)st[a][k]++});
+  const labels=Object.keys(st).sort();
+  if(bar)bar.destroy();
+  bar=new Chart($('areaBar'),{type:'bar',
+    data:{labels,datasets:[{label:'Total PO',data:labels.map(a=>st[a].total),borderRadius:6,
+      backgroundColor:labels.map(a=>a===areaSel?'#0284c7':'#38bdf8')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'}},x:{grid:{display:false}}},
+      onClick:(e,els)=>{if(els.length)setArea(labels[els[0].index])}}});
+  $('areaCards').innerHTML=labels.length?labels.map(a=>{const s=st[a];
+    return '<div class="area-card'+(a===areaSel?' active':'')+'" data-area="'+esc(a)+'">'
+      +'<div class="d-flex justify-content-between"><b class="small">'+esc(a)+'</b><span class="badge bg-primary">'+s.total+' PO</span></div>'
+      +'<div class="d-flex gap-3 small text-muted"><span><span class="dot bg-danger"></span><b>'+s.danger+'</b> Late</span>'
+      +'<span><span class="dot bg-success"></span><b>'+s.success+'</b> Proses</span>'
+      +'<span><span class="dot bg-warning"></span><b>'+s.warning+'</b> Waiting</span></div></div>'}).join('')
+    :'<div class="text-center text-muted py-3">Tidak ada data area.</div>';
+  renderCalendar();
+}
+$('areaCards').addEventListener('click',e=>{const c=e.target.closest('.area-card');if(c)setArea(c.dataset.area)});
+function setArea(a){areaSel=a;$('areaBadge').textContent=a?'Area: '+a:'Semua Area';renderAnalytics()}
+
+function moveMonth(d){
+  if(d===0){calY=today.getFullYear();calM=today.getMonth()}
+  else{calM+=d;if(calM<0){calM=11;calY--}if(calM>11){calM=0;calY++}}
+  renderCalendar();
+}
+function renderCalendar(){
+  const names=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  $('calTitle').innerHTML='<i class="fa-solid fa-calendar-days text-primary me-2"></i>Schedule Pengiriman '+names[calM]+' '+calY;
+  const ev={};
+  ROWS.forEach(r=>{
+    if(areaSel&&r[IDX.area]!==areaSel)return;
+    const d=parseDMY(r[IDX.eta]);
+    if(d&&d.getMonth()===calM&&d.getFullYear()===calY)(ev[d.getDate()]=ev[d.getDate()]||[]).push(r);
+  });
+  let html='';
+  for(let i=0;i<new Date(calY,calM,1).getDay();i++)html+='<div class="cal-cell bg-light opacity-50"></div>';
+  const days=new Date(calY,calM+1,0).getDate();
+  for(let d=1;d<=days;d++){
+    const isToday=calY===today.getFullYear()&&calM===today.getMonth()&&d===today.getDate();
+    html+='<div class="cal-cell'+(isToday?' today':'')+'"><div class="cal-num">'+d+'</div>'
+      +(ev[d]||[]).map(r=>{const k=cls(r[IDX.ctrl]);
+        return '<span class="ev" style="background:'+COLOR[k]+';color:'+(k==='warning'?'#000':'#fff')+'" title="PO: '+esc(r[IDX.po])+'&#10;Principle: '+esc(r[IDX.principal])+'&#10;Qty: '+esc(r[IDX.qty])+'&#10;Area: '+esc(r[IDX.area])+'&#10;Status: '+esc(r[IDX.ctrl])+'">'
+          +esc(r[IDX.po])+' - '+esc(r[IDX.principal])+' ('+esc(r[IDX.qty])+')</span>'}).join('')+'</div>';
+  }
+  $('calDays').innerHTML=html;
+}
+$('tab-schedule').addEventListener('shown.bs.tab',renderAnalytics);
+
+/* ===== EXPORT ===== */
+function exportExcel(){
+  if(!VIEW.length)return toast('Tidak ada data untuk di-export!','warning');
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([H,...VIEW]),'Filtered_Data');
+  XLSX.writeFile(wb,'Monitoring_Need_FU_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('File Excel berhasil didownload!','success');
+}
+function exportPDF(){
+  if(!VIEW.length)return toast('Tidak ada data untuk di-export!','warning');
+  const doc=new window.jspdf.jsPDF({orientation:'landscape'});
+  doc.text('Laporan Monitoring Need FU ETA/ETD',14,15);
+  doc.autoTable({head:[H],body:VIEW,startY:20,styles:{fontSize:6,cellPadding:1.5},headStyles:{fillColor:[2,132,199]}});
+  doc.save('Monitoring_Need_FU_'+new Date().toISOString().slice(0,10)+'.pdf');
+  toast('File PDF berhasil didownload!','success');
+}
+
+document.addEventListener('DOMContentLoaded',()=>load());
+</script>
+</body>
+</html>
