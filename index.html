@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoring Need FU ETA/ETD</title>
+<title>Jumpstart - PPIC Control Tower</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <style>
-body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:16px;color:#334155}
+body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:0;color:#334155}
 .card-custom{border:none;border-radius:14px;box-shadow:0 4px 20px -2px rgba(15,23,42,.06);background:#fff;margin-bottom:16px}
 .nav-tabs{border-bottom:2px solid #e2e8f0}
 .nav-tabs .nav-link{border:none;color:#64748b;font-weight:600;padding:12px 24px}
@@ -38,27 +38,54 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
 .ev{display:block;margin-top:3px;padding:3px 6px;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#fff}
 #loading{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:50;border-radius:14px}
 .toast-container{position:fixed;bottom:24px;right:24px;z-index:1055}
+
+#app{display:flex;min-height:100vh}
+#sidebar{width:250px;background:#0f172a;color:#cbd5e1;position:sticky;top:0;height:100vh;flex-shrink:0;overflow:hidden;transition:width .25s;z-index:1040}
+#sidebar .brand{display:flex;align-items:center;gap:12px;padding:18px 20px;color:#fff;font-weight:700;font-size:1.1rem;white-space:nowrap}
+#sidebar .brand i{font-size:1.4rem;color:#38bdf8}
+#sidebar .brand small{display:block;font-weight:500;font-size:.7rem;color:#94a3b8}
+.mi{display:flex;align-items:center;gap:14px;padding:12px 18px;margin:4px 10px;border-radius:10px;color:#cbd5e1;text-decoration:none;white-space:nowrap;font-weight:600;font-size:.88rem}
+.mi i{width:20px;text-align:center}
+.mi:hover{background:#1e293b;color:#fff}
+.mi.active{background:#0284c7;color:#fff}
+#main{flex:1;min-width:0}
+.topbar{position:sticky;top:0;z-index:30;background:#fff;box-shadow:0 1px 8px rgba(15,23,42,.08);padding:10px 20px;display:flex;justify-content:space-between;align-items:center}
+.content{padding:16px 20px}
+.page{display:none}.page.active{display:block}
+body.collapsed #sidebar{width:0}
+#backdrop{display:none}
+@media(max-width:991px){
+ #sidebar{position:fixed;left:-260px;top:0;transition:left .25s}
+ body.sb-open #sidebar{left:0}
+ body.sb-open #backdrop{display:block;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1035}
+}
 </style>
 </head>
 <body>
-<div class="container-fluid">
-
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h4 class="fw-bold m-0"><i class="fa-solid fa-chart-line text-primary me-2"></i>Monitoring Need FU ETA/ETD</h4>
-      <small class="text-muted">Real-time Logistics &amp; Area Analytics Dashboard &middot; Update terakhir: <b id="updatedAt">-</b></small>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand"><i class="fa-solid fa-rocket"></i><span>Jumpstart<small>PPIC Control Tower</small></span></div>
+    <nav>
+      <a href="#" class="mi active" data-page="monitoring"><i class="fa-solid fa-table-list"></i><span>Data Monitoring &amp; Status</span></a>
+      <a href="#" class="mi" data-page="schedule"><i class="fa-solid fa-chart-pie"></i><span>Area Analytics &amp; Schedule</span></a>
+    </nav>
+  </aside>
+  <div id="backdrop" onclick="toggleSidebar()"></div>
+  <main id="main">
+    <div class="topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-light border" onclick="toggleSidebar()" title="Sembunyikan / tampilkan menu"><i class="fa-solid fa-bars"></i></button>
+        <div>
+          <h5 class="fw-bold m-0"><i class="fa-solid fa-rocket text-primary me-2"></i>Jumpstart - PPIC Control Tower</h5>
+          <small class="text-muted"><span id="pageName">Data Monitoring &amp; Status</span> &middot; Update terakhir: <b id="updatedAt">-</b></small>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-primary px-3 fw-semibold" onclick="load()"><i class="fa-solid fa-rotate me-1"></i>Sync Live Data</button>
     </div>
-    <button class="btn btn-sm btn-primary px-3 fw-semibold" onclick="load()"><i class="fa-solid fa-rotate me-1"></i>Sync Live Data</button>
-  </div>
-
-  <ul class="nav nav-tabs mb-3">
-    <li class="nav-item"><button class="nav-link active" id="tab-monitoring" data-bs-toggle="tab" data-bs-target="#pane-monitoring" type="button"><i class="fa-solid fa-table-list me-2"></i>Data Monitoring &amp; Status</button></li>
-    <li class="nav-item"><button class="nav-link" id="tab-schedule" data-bs-toggle="tab" data-bs-target="#pane-schedule" type="button"><i class="fa-solid fa-chart-pie me-2"></i>Area Analytics &amp; Schedule Bulanan</button></li>
-  </ul>
-
+    <div class="content">
   <div class="tab-content">
     <!-- TAB 1 -->
-    <div class="tab-pane fade show active" id="pane-monitoring">
+    <div class="page active" id="pane-monitoring">
       <div class="row g-3 mb-3" id="kpiRow"></div>
 
       <div class="row g-3">
@@ -104,12 +131,12 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
     </div>
 
     <!-- TAB 2 -->
-    <div class="tab-pane fade" id="pane-schedule">
+    <div class="page" id="pane-schedule">
       <div class="row g-3 mb-3">
         <div class="col-12 col-lg-7"><div class="card card-custom p-3 h-100">
           <div class="d-flex justify-content-between mb-2">
             <h6 class="fw-bold m-0"><i class="fa-solid fa-chart-column text-primary me-2"></i>Volume PO Berdasarkan Area</h6>
-            <span class="badge bg-light text-secondary border">Klik batang untuk filter</span>
+            <span class="badge bg-light text-secondary border">Klik batang untuk filter &middot; Late / Proses / Waiting</span>
           </div>
           <div style="position:relative;height:300px"><canvas id="areaBar"></canvas></div>
         </div></div>
@@ -128,7 +155,7 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
             <button class="btn btn-sm btn-outline-secondary" onclick="moveMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
             <h6 class="fw-bold m-0" id="calTitle"></h6>
             <button class="btn btn-sm btn-outline-secondary" onclick="moveMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
-            <button class="btn btn-sm btn-link text-decoration-none" onclick="moveMonth(0)">Bulan ini</button>
+            
           </div>
           <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6" id="areaBadge">Semua Area</span>
         </div>
@@ -139,6 +166,8 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
       </div>
     </div>
   </div>
+</div>
+</main>
 </div>
 
 <div class="toast-container"><div id="toast" class="toast align-items-center border-0 text-bg-primary"><div class="d-flex"><div class="toast-body" id="toastMsg"></div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>
@@ -176,7 +205,7 @@ function parseDMY(s){if(typeof s!=='string')return null;const p=s.split('/');if(
 const isLate=r=>{const d=parseDMY(r[IDX.eta]);return d&&d<today};
 
 /* ===== LOAD DATA (via Apps Script API) ===== */
-const API_URL='https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnRNPqWdcObBFQ51SeH1Vgcw-IYCkCjPIUsLElf5lMOsE3g1jRgk5-mXefNyBytd2Hughn7D2LBkXug0RiKAxyobK3EpEqy5eIqLaIEH5gK9otrNjvimxC0jCiTeAQPDcWKruaeicZWM7YvmYCR6BnROWQhkRUgW_dXhb9MFqGMp4DpW-CrNYFBvf30CKztrMyYbAQgqhAiYQMIH-cJOjZG5r34697pOUFHaBG9VZbYCOToE5RP29TRMdUJnrOktho3zmO_bu72ZkWs4EJ_LIHnayEynKA&lib=MRJEcszSci-vmCyKSJsTjjj0KjsGE0Kk6'; // URL yang berakhiran /exec
+const API_URL='https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQ-PX5MhkqAHZ0exp8tPLtAeMOb2TL3QAX-0u6TGMsdHt6dWJCrXchm24VUOV08HDC_5zegW5z0XKLLj-Q23qYXA8yOqB6xryDJYMHsowVscGeaU7SlyUuZvZwp7LlDhykLpsYCIjSWiAOarYw1cHmqyF2QCfr0qrrPbXNIkNGw0P5mvN3TJVUSNy8l7FOk6PEwWrByzaG7zWPL8YUX0iWiv31AjY6DbkWCRplqOp_Sfd3lvwvxDMPMHDJujAlUhDtduM9HG3Y1enxR74ChFZD8wfGEVg&lib=MRJEcszSci-vmCyKSJsTjjj0KjsGE0Kk6'; // URL yang berakhiran /exec
 const CHECK_EVERY=60000;                       // cek perubahan tiap 60 detik
 let lastVersion=null;
 
@@ -276,18 +305,32 @@ function renderDonut(){
 }
 
 /* ===== TAB 2: AREA ANALYTICS ===== */
+// Plugin: tampilkan angka di dalam tiap segmen batang
+const segLabels={id:'segLabels',afterDatasetsDraw(chart){
+  const ctx=chart.ctx;ctx.save();ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  chart.data.datasets.forEach((ds,i)=>{
+    chart.getDatasetMeta(i).data.forEach((b,j)=>{
+      const v=ds.data[j];if(!v||Math.abs(b.base-b.y)<11)return;
+      ctx.fillStyle=ds.lbl;ctx.fillText(v,b.x,(b.y+b.base)/2);
+    });
+  });
+  ctx.restore();
+}};
 function renderAnalytics(){
   const st={};
   ROWS.forEach(r=>{const a=r[IDX.area];if(!a)return;
-    st[a]=st[a]||{total:0,danger:0,success:0,warning:0};st[a].total++;
+    st[a]=st[a]||{total:0,danger:0,success:0,warning:0,other:0};st[a].total++;
     const k=cls(r[IDX.ctrl]);if(st[a][k]!==undefined)st[a][k]++});
   const labels=Object.keys(st).sort();
   if(bar)bar.destroy();
-  bar=new Chart($('areaBar'),{type:'bar',
-    data:{labels,datasets:[{label:'Total PO',data:labels.map(a=>st[a].total),borderRadius:6,
-      backgroundColor:labels.map(a=>a===areaSel?'#0284c7':'#38bdf8')}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'}},x:{grid:{display:false}}},
+  const sets=[['Late (Over Due)','danger'],['Proses','success'],['Waiting','warning'],['Lainnya','other']]
+    .filter(x=>labels.some(a=>st[a][x[1]]>0))
+    .map(x=>({label:x[0],data:labels.map(a=>st[a][x[1]]),lbl:x[1]==='warning'?'#000':'#fff',borderRadius:3,
+      backgroundColor:c=>areaSel&&labels[c.dataIndex]!==areaSel?COLOR[x[1]]+'55':COLOR[x[1]]}));
+  bar=new Chart($('areaBar'),{type:'bar',data:{labels,datasets:sets},plugins:[segLabels],
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{mode:'index',intersect:false}},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{precision:0}}},
       onClick:(e,els)=>{if(els.length)setArea(labels[els[0].index])}}});
   $('areaCards').innerHTML=labels.length?labels.map(a=>{const s=st[a];
     return '<div class="area-card'+(a===areaSel?' active':'')+'" data-area="'+esc(a)+'">'
@@ -327,7 +370,15 @@ function renderCalendar(){
   }
   $('calDays').innerHTML=html;
 }
-$('tab-schedule').addEventListener('shown.bs.tab',renderAnalytics);
+function toggleSidebar(){document.body.classList.toggle(innerWidth<992?'sb-open':'collapsed')}
+function showPage(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='pane-'+p));
+  document.querySelectorAll('.mi').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
+  $('pageName').textContent=p==='schedule'?'Area Analytics & Schedule Bulanan':'Data Monitoring & Status';
+  if(p==='schedule')renderAnalytics();
+  if(innerWidth<992)document.body.classList.remove('sb-open');
+}
+document.querySelectorAll('.mi').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page)}));
 
 /* ===== EXPORT ===== */
 function exportExcel(){
@@ -340,7 +391,7 @@ function exportExcel(){
 function exportPDF(){
   if(!VIEW.length)return toast('Tidak ada data untuk di-export!','warning');
   const doc=new window.jspdf.jsPDF({orientation:'landscape'});
-  doc.text('Laporan Monitoring Need FU ETA/ETD',14,15);
+  doc.text('Jumpstart - PPIC Control Tower: Monitoring Need FU ETA/ETD',14,15);
   doc.autoTable({head:[H],body:VIEW,startY:20,styles:{fontSize:6,cellPadding:1.5},headStyles:{fillColor:[2,132,199]}});
   doc.save('Monitoring_Need_FU_'+new Date().toISOString().slice(0,10)+'.pdf');
   toast('File PDF berhasil didownload!','success');
