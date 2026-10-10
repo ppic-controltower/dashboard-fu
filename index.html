@@ -258,7 +258,7 @@ function parseDMY(s){if(typeof s!=='string')return null;const p=s.split('/');if(
 const isLate=r=>{const d=parseDMY(r[IDX.eta]);return d&&d<today};
 
 /* ===== LOAD DATA (via Apps Script API) ===== */
-const API_URL='https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQ-PX5MhkqAHZ0exp8tPLtAeMOb2TL3QAX-0u6TGMsdHt6dWJCrXchm24VUOV08HDC_5zegW5z0XKLLj-Q23qYXA8yOqB6xryDJYMHsowVscGeaU7SlyUuZvZwp7LlDhykLpsYCIjSWiAOarYw1cHmqyF2QCfr0qrrPbXNIkNGw0P5mvN3TJVUSNy8l7FOk6PEwWrByzaG7zWPL8YUX0iWiv31AjY6DbkWCRplqOp_Sfd3lvwvxDMPMHDJujAlUhDtduM9HG3Y1enxR74ChFZD8wfGEVg&lib=MRJEcszSci-vmCyKSJsTjjj0KjsGE0Kk6'; // URL yang berakhiran /exec
+const API_URL='https://script.google.com/macros/s/AKfycbwHCS2gSWe-TzOLQeBw8717Dn0r7D8akr4lRJb1B9RCbfYu17vqCDgxMOubiDyPMT3WkQ/exec'; // URL yang berakhiran /exec
 const CHECK_EVERY=60000;                       // cek perubahan tiap 60 detik
 let lastVersion=null;
 let TOKEN='';try{TOKEN=localStorage.getItem('jp_token')||''}catch(e){}
