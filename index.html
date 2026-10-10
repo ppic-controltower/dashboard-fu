@@ -40,7 +40,7 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
 .toast-container{position:fixed;bottom:24px;right:24px;z-index:1055}
 
 #app{display:flex;min-height:100vh}
-#sidebar{width:250px;background:#0f172a;color:#cbd5e1;position:sticky;top:0;height:100vh;flex-shrink:0;overflow:hidden;transition:width .25s;z-index:1040}
+#sidebar{width:280px;display:flex;flex-direction:column;background:#0f172a;color:#cbd5e1;position:sticky;top:0;height:100vh;flex-shrink:0;overflow:hidden;transition:width .25s;z-index:1040}
 #sidebar .brand{display:flex;align-items:center;gap:12px;padding:18px 20px;color:#fff;font-weight:700;font-size:1.1rem;white-space:nowrap}
 #sidebar .brand i{font-size:1.4rem;color:#38bdf8}
 #sidebar .brand small{display:block;font-weight:500;font-size:.7rem;color:#94a3b8}
@@ -55,33 +55,48 @@ body{background:#f1f5f9;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sa
 body.collapsed #sidebar{width:0}
 #backdrop{display:none}
 @media(max-width:991px){
- #sidebar{position:fixed;left:-260px;top:0;transition:left .25s}
+ #sidebar{position:fixed;left:-290px;top:0;transition:left .25s}
  body.sb-open #sidebar{left:0}
  body.sb-open #backdrop{display:block;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1035}
 }
+#sidebar>*{min-width:280px}
+#sidebar .brand{padding:24px 20px 20px;border-bottom:1px solid #1e293b;margin-bottom:12px}
+#sidebar .brand>i{font-size:1.9rem}
+.ttl{display:flex;flex-direction:column;line-height:1.15}
+.t1{font-size:1.65rem;font-weight:800;letter-spacing:-.5px;color:#fff}
+.t2{font-size:.95rem;font-weight:600;color:#38bdf8;letter-spacing:.3px}
+.sb-btn{background:transparent;border:0;color:#94a3b8;padding:6px 8px;border-radius:8px}
+.sb-btn:hover{background:#1e293b;color:#fff}
+.mi{font-size:.95rem}
+.sb-foot{margin-top:auto;padding:16px 20px 20px;border-top:1px solid #1e293b}
+.sb-foot .upd{margin-top:10px;font-size:.75rem;color:#94a3b8;text-align:center}
+.sb-foot .upd b{color:#e2e8f0}
+#openBtn{display:none;position:fixed;top:12px;left:12px;z-index:1030;width:40px;height:40px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.15)}
+body.collapsed #openBtn{display:block}
+body.collapsed .content{padding-top:62px}
+@media(max-width:991px){#openBtn{display:block}.content{padding-top:62px}}
 </style>
 </head>
 <body>
 <div id="app">
   <aside id="sidebar">
-    <div class="brand"><i class="fa-solid fa-rocket"></i><span>Jumpstart<small>PPIC Control Tower</small></span></div>
+    <div class="brand">
+      <i class="fa-solid fa-rocket"></i>
+      <div class="ttl"><span class="t1">Jumpstart</span><span class="t2">PPIC Control Tower</span></div>
+      <button class="sb-btn ms-auto" onclick="toggleSidebar()" title="Sembunyikan menu"><i class="fa-solid fa-angles-left"></i></button>
+    </div>
     <nav>
       <a href="#" class="mi active" data-page="monitoring"><i class="fa-solid fa-table-list"></i><span>Data Monitoring &amp; Status</span></a>
       <a href="#" class="mi" data-page="schedule"><i class="fa-solid fa-chart-pie"></i><span>Area Analytics &amp; Schedule</span></a>
     </nav>
+    <div class="sb-foot">
+      <button class="btn btn-primary w-100 fw-semibold" onclick="load()"><i class="fa-solid fa-rotate me-2"></i>Sync Live Data</button>
+      <div class="upd">Update terakhir<br><b id="updatedAt">-</b></div>
+    </div>
   </aside>
   <div id="backdrop" onclick="toggleSidebar()"></div>
+  <button id="openBtn" onclick="toggleSidebar()" title="Tampilkan menu"><i class="fa-solid fa-bars"></i></button>
   <main id="main">
-    <div class="topbar">
-      <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-light border" onclick="toggleSidebar()" title="Sembunyikan / tampilkan menu"><i class="fa-solid fa-bars"></i></button>
-        <div>
-          <h5 class="fw-bold m-0"><i class="fa-solid fa-rocket text-primary me-2"></i>Jumpstart - PPIC Control Tower</h5>
-          <small class="text-muted"><span id="pageName">Data Monitoring &amp; Status</span> &middot; Update terakhir: <b id="updatedAt">-</b></small>
-        </div>
-      </div>
-      <button class="btn btn-sm btn-primary px-3 fw-semibold" onclick="load()"><i class="fa-solid fa-rotate me-1"></i>Sync Live Data</button>
-    </div>
     <div class="content">
   <div class="tab-content">
     <!-- TAB 1 -->
@@ -374,7 +389,6 @@ function toggleSidebar(){document.body.classList.toggle(innerWidth<992?'sb-open'
 function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='pane-'+p));
   document.querySelectorAll('.mi').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
-  $('pageName').textContent=p==='schedule'?'Area Analytics & Schedule Bulanan':'Data Monitoring & Status';
   if(p==='schedule')renderAnalytics();
   if(innerWidth<992)document.body.classList.remove('sb-open');
 }
