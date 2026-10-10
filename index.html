@@ -120,8 +120,7 @@ body.collapsed .toolbar{padding-left:50px}
   <div class="tab-content">
     <!-- TAB 1 -->
     <div class="page active" id="pane-monitoring">
-      <div class="row g-3 mb-3" id="kpiRow"></div>
-
+      
       <div class="row g-3">
         <div class="col-12 col-lg-8">
           <div class="card card-custom p-3 h-100 justify-content-center">
@@ -285,7 +284,7 @@ function populate(){
 }
 function apply(){
   VIEW=ROWS.filter(r=>match(r,fv()));
-  populate();sortView();renderTable();renderKPI();renderDonut();
+  populate();sortView();renderTable();renderDonut();
 }
 function resetFilters(){['fArea','fStatus','fPO','fSearch'].forEach(i=>$(i).value='');apply()}
 
@@ -303,13 +302,6 @@ function sortView(){
 }
 
 /* ===== RENDER ===== */
-function renderKPI(){
-  const c={danger:0,success:0,warning:0,other:0};VIEW.forEach(r=>c[cls(r[IDX.ctrl])]++);
-  const late=VIEW.filter(isLate).length;
-  const k=(label,n,color)=>'<div class="col-6 col-lg"><div class="card card-custom kpi mb-0" style="--c:'+color+'"><small>'+label+'</small><div class="n">'+n+'</div></div></div>';
-  $('kpiRow').innerHTML=k('Need FU Vendor (Over Due)',c.danger,COLOR.danger)
-    +k('Proses Pengiriman',c.success,COLOR.success)+k('Waiting Schedule',c.warning,COLOR.warning)+k('ETA Sudah Lewat',late,'#9333ea');
-}
 function renderHead(){
   $('thead').innerHTML='<tr>'+H.map((h,i)=>'<th onclick="sortBy('+i+')">'+esc(h)+(sort.col===i?(sort.dir>0?' &#9650;':' &#9660;'):'')+'</th>').join('')+'</tr>';
 }
