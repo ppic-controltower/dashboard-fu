@@ -94,9 +94,27 @@ body.collapsed .toolbar{padding-left:50px}
 .lg .nm{flex:1;color:#475569}
 .lg b{min-width:28px;text-align:right;color:#1e293b}
 .lg .pc{min-width:40px;text-align:right;color:#64748b}
+#loginScreen{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e8eff8,#f1f5f9)}
+.login-card{width:370px;max-width:92vw;background:#fff;padding:32px;border-radius:16px;box-shadow:0 10px 40px rgba(15,23,42,.12)}
+.lg-logo{width:56px;height:56px;margin:0 auto 12px;border-radius:14px;background:#e0f2fe;color:#0284c7;display:flex;align-items:center;justify-content:center;font-size:1.6rem}
+.lg-sub{color:#0284c7;font-weight:600;margin-bottom:22px}
+.sb-foot{border-top:1px solid var(--sb-line)}
 </style>
 </head>
 <body>
+<div id="loginScreen">
+  <form class="login-card" onsubmit="return doLogin(event)">
+    <div class="lg-logo"><i class="fa-solid fa-rocket"></i></div>
+    <h3 class="fw-bold m-0 text-center">Jumpstart</h3>
+    <div class="lg-sub text-center">PPIC Control Tower</div>
+    <label class="form-label small fw-semibold text-secondary">Username</label>
+    <input id="lgUser" class="form-control mb-3" autocomplete="username" autofocus>
+    <label class="form-label small fw-semibold text-secondary">Password</label>
+    <input id="lgPass" type="password" class="form-control mb-2" autocomplete="current-password">
+    <div id="loginErr" class="text-danger small mb-2" style="min-height:20px"></div>
+    <button id="lgBtn" class="btn btn-primary w-100 fw-semibold py-2">Masuk</button>
+  </form>
+</div>
 <div id="app">
   <aside id="sidebar">
     <div class="brand">
@@ -108,6 +126,7 @@ body.collapsed .toolbar{padding-left:50px}
       <a href="#" class="mi active" data-page="monitoring"><i class="fa-solid fa-table-list"></i><span>Data Monitoring &amp; Status</span></a>
       <a href="#" class="mi" data-page="schedule"><i class="fa-solid fa-chart-pie"></i><span>Area Analytics &amp; Schedule</span></a>
     </nav>
+    <div class="sb-foot"><button class="btn btn-outline-secondary w-100 fw-semibold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</button></div>
   </aside>
   <div id="backdrop" onclick="toggleSidebar()"></div>
   <button id="openBtn" onclick="toggleSidebar()" title="Tampilkan menu"><i class="fa-solid fa-bars"></i></button>
@@ -242,10 +261,32 @@ const isLate=r=>{const d=parseDMY(r[IDX.eta]);return d&&d<today};
 const API_URL='https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQ-PX5MhkqAHZ0exp8tPLtAeMOb2TL3QAX-0u6TGMsdHt6dWJCrXchm24VUOV08HDC_5zegW5z0XKLLj-Q23qYXA8yOqB6xryDJYMHsowVscGeaU7SlyUuZvZwp7LlDhykLpsYCIjSWiAOarYw1cHmqyF2QCfr0qrrPbXNIkNGw0P5mvN3TJVUSNy8l7FOk6PEwWrByzaG7zWPL8YUX0iWiv31AjY6DbkWCRplqOp_Sfd3lvwvxDMPMHDJujAlUhDtduM9HG3Y1enxR74ChFZD8wfGEVg&lib=MRJEcszSci-vmCyKSJsTjjj0KjsGE0Kk6'; // URL yang berakhiran /exec
 const CHECK_EVERY=60000;                       // cek perubahan tiap 60 detik
 let lastVersion=null;
+let TOKEN='';try{TOKEN=localStorage.getItem('jp_token')||''}catch(e){}
+const apiUrl=extra=>API_URL+'?t='+encodeURIComponent(TOKEN)+(extra||'');
+function showLogin(msg){$('loginScreen').classList.remove('d-none');$('loginErr').textContent=msg||''}
+function logout(expired){
+  TOKEN='';lastVersion=null;try{localStorage.removeItem('jp_token')}catch(e){}
+  showLogin(expired===true?'Sesi berakhir, silakan login kembali.':'');
+}
+function doLogin(ev){
+  ev.preventDefault();
+  const u=$('lgUser').value.trim(),pw=$('lgPass').value,btn=$('lgBtn');
+  if(!u||!pw){$('loginErr').textContent='Isi username dan password.';return false}
+  btn.disabled=true;btn.textContent='Memeriksa...';$('loginErr').textContent='';
+  fetch(API_URL+'?action=login&u='+encodeURIComponent(u)+'&p='+encodeURIComponent(pw))
+    .then(r=>r.json()).then(d=>{
+      if(d.error)throw new Error(d.error);
+      TOKEN=d.token;try{localStorage.setItem('jp_token',TOKEN)}catch(e){}
+      $('lgPass').value='';$('loginScreen').classList.add('d-none');load();
+    }).catch(e=>{$('loginErr').textContent=/fetch/i.test(e.message)?'Tidak bisa terhubung ke server.':e.message})
+    .finally(()=>{btn.disabled=false;btn.textContent='Masuk'});
+  return false;
+}
 
 function load(silent){
   if(!silent)loading(true,'Sinkronisasi data live...');
-  fetch(API_URL).then(r=>r.json()).then(d=>{
+  fetch(apiUrl()).then(r=>r.json()).then(d=>{
+    if(d.error==='UNAUTHORIZED'){loading(false);logout(true);return}
     if(d.error)throw new Error(d.error);
     if(!d.headers||!d.headers.length){loading(false);toast('Data kosong atau format tidak sesuai.','warning');return}
     H=d.headers;ROWS=d.rows;lastVersion=d.version;$('updatedAt').textContent=d.updatedAt;
@@ -257,9 +298,9 @@ function load(silent){
 // Auto-refresh: cek kode versi (ringan), ambil data penuh hanya jika berubah.
 // Filter, sort, dan bulan kalender yang sedang dibuka tidak ter-reset.
 function checkVersion(){
-  if(document.hidden||!lastVersion)return;
-  fetch(API_URL+'?action=version').then(r=>r.json())
-    .then(v=>{if(v.version&&v.version!==lastVersion)load(true)}).catch(()=>{});
+  if(document.hidden||!lastVersion||!TOKEN)return;
+  fetch(apiUrl('&action=version')).then(r=>r.json())
+    .then(v=>{if(v.error==='UNAUTHORIZED')return logout(true);if(v.version&&v.version!==lastVersion)load(true)}).catch(()=>{});
 }
 setInterval(checkVersion,CHECK_EVERY);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkVersion()});
@@ -448,7 +489,7 @@ function exportPDF(){
   toast('File PDF berhasil didownload!','success');
 }
 
-document.addEventListener('DOMContentLoaded',()=>load());
+document.addEventListener('DOMContentLoaded',()=>{if(TOKEN){$('loginScreen').classList.add('d-none');load()}else showLogin()});
 </script>
 </body>
 </html>
