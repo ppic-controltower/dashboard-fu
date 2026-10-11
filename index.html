@@ -131,6 +131,7 @@ body.collapsed .toolbar{padding-left:50px}
       <a href="#" class="mi" data-page="schedule"><i class="fa-solid fa-chart-pie"></i><span>Area Analytics &amp; Schedule</span></a>
     <a href="#" class="mi" data-page="inv"><i class="fa-solid fa-chart-line"></i><span>Inventory Recap &amp; Productivity</span></a>
       <a href="#" class="mi" data-page="disc"><i class="fa-solid fa-ban"></i><span>Discontinue &amp; Penghabisan</span></a>
+      <a href="#" class="mi" data-page="nomov"><i class="fa-solid fa-box-archive"></i><span>No Movement Material</span></a>
     </nav>
   </aside>
   <div id="backdrop" onclick="toggleSidebar()"></div>
@@ -210,16 +211,30 @@ body.collapsed .toolbar{padding-left:50px}
 <div class="page" id="pane-disc">
   <div class="row g-3">
     <div class="col-12 col-lg-4"><div class="card card-custom p-3 h-100"><div class="row g-3">
-      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Area</label><select id="dArea" class="form-select form-select-sm" onchange="renderDisc()"></select></div>
-      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Reorder Item</label><select id="dRe" class="form-select form-select-sm" onchange="renderDisc()"></select></div>
-      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Cari (semua kolom)</label><input id="dQ" class="form-control form-control-sm" placeholder="material, supplier..." oninput="renderDisc()"></div>
-      <div class="col-12 text-end"><button class="btn btn-sm btn-outline-danger px-4 fw-semibold" onclick="resetDisc()"><i class="fa-solid fa-arrows-rotate me-1"></i>Reset Filter</button></div>
+      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Area</label><select id="dArea" class="form-select form-select-sm" onchange="renderList('d')"></select></div>
+      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Reorder Item</label><select id="dRe" class="form-select form-select-sm" onchange="renderList('d')"></select></div>
+      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Cari (semua kolom)</label><input id="dQ" class="form-control form-control-sm" placeholder="material, supplier..." oninput="renderList('d')"></div>
+      <div class="col-12 text-end"><button class="btn btn-sm btn-outline-danger px-4 fw-semibold" onclick="resetList('d')"><i class="fa-solid fa-arrows-rotate me-1"></i>Reset Filter</button></div>
     </div></div></div>
     <div class="col-12 col-lg-8"><div class="card card-custom p-3"><h6 class="fw-bold text-secondary small">Total Reorder Item per Area <span class="fw-normal">(klik batang untuk filter area)</span></h6><div style="position:relative;height:280px"><canvas id="dChart"></canvas></div></div></div>
   </div>
   <div class="d-flex justify-content-between align-items-center mb-2"><span class="text-muted small" id="dCount"></span>
-    <div class="btn-group"><button class="btn btn-success btn-sm" onclick="exportDisc('x')"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button><button class="btn btn-danger btn-sm" onclick="exportDisc('p')"><i class="fa-solid fa-file-pdf me-1"></i>Export PDF</button></div></div>
+    <div class="btn-group"><button class="btn btn-success btn-sm" onclick="exportList('d','x')"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button><button class="btn btn-danger btn-sm" onclick="exportList('d','p')"><i class="fa-solid fa-file-pdf me-1"></i>Export PDF</button></div></div>
   <div class="card card-custom p-3"><div class="table-wrap"><table class="table table-hover align-middle mb-0"><thead id="dHead"></thead><tbody id="dBody"></tbody></table></div></div>
+</div>
+<div class="page" id="pane-nomov">
+  <div class="row g-3">
+    <div class="col-12 col-lg-4"><div class="card card-custom p-3 h-100"><div class="row g-3">
+      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Area</label><select id="nArea" class="form-select form-select-sm" onchange="renderList('n')"></select></div>
+      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Reorder Item</label><select id="nRe" class="form-select form-select-sm" onchange="renderList('n')"></select></div>
+      <div class="col-12"><label class="form-label small fw-semibold text-secondary">Cari (semua kolom)</label><input id="nQ" class="form-control form-control-sm" placeholder="material, supplier..." oninput="renderList('n')"></div>
+      <div class="col-12 text-end"><button class="btn btn-sm btn-outline-danger px-4 fw-semibold" onclick="resetList('n')"><i class="fa-solid fa-arrows-rotate me-1"></i>Reset Filter</button></div>
+    </div></div></div>
+    <div class="col-12 col-lg-8"><div class="card card-custom p-3"><h6 class="fw-bold text-secondary small">Total Reorder Item per Area <span class="fw-normal">(klik batang untuk filter area)</span></h6><div style="position:relative;height:280px"><canvas id="nChart"></canvas></div></div></div>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mb-2"><span class="text-muted small" id="nCount"></span>
+    <div class="btn-group"><button class="btn btn-success btn-sm" onclick="exportList('n','x')"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button><button class="btn btn-danger btn-sm" onclick="exportList('n','p')"><i class="fa-solid fa-file-pdf me-1"></i>Export PDF</button></div></div>
+  <div class="card card-custom p-3"><div class="table-wrap"><table class="table table-hover align-middle mb-0"><thead id="nHead"></thead><tbody id="nBody"></tbody></table></div></div>
 </div>
 <div class="page" id="pane-schedule">
       <div class="row g-3 mb-3">
@@ -327,7 +342,7 @@ function load(silent){
     if(d.error)throw new Error(d.error);
     if(!d.headers||!d.headers.length){loading(false);toast('Data kosong atau format tidak sesuai.','warning');return}
     H=d.headers;ROWS=d.rows;lastVersion=d.version;$('updatedAt').textContent=d.updatedAt;
-    DISC=d.disc||{headers:[],rows:[]};INV=d.inv||{agg:[]};resolveCols();apply();loading(false);refreshExtra();
+    DISC=d.disc||{headers:[],rows:[]};NOMOV=d.nomov||{headers:[],rows:[]};INV=d.inv||{agg:[]};resolveCols();apply();loading(false);refreshExtra();
     toast(silent?'Data diperbarui otomatis':'Data live berhasil dimuat!',silent?'info':'success');
     if($('pane-schedule').classList.contains('active'))renderAnalytics();
   }).catch(e=>{loading(false);toast('Gagal memuat data: '+e.message,'danger')});
@@ -504,7 +519,7 @@ function toggleSidebar(){document.body.classList.toggle(innerWidth<992?'sb-open'
 function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='pane-'+p));
   document.querySelectorAll('.mi').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
-  if(p==='schedule')renderAnalytics();if(p==='inv')renderInv();if(p==='disc')renderDisc();
+  if(p==='schedule')renderAnalytics();if(p==='inv')renderInv();if(p==='disc')renderList('d');if(p==='nomov')renderList('n');
   if(innerWidth<992)document.body.classList.remove('sb-open');
 }
 document.querySelectorAll('.mi').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page)}));
@@ -527,15 +542,15 @@ function exportPDF(){
 }
 
 /* ===== FITUR BARU: Inventory Recap & Discontinue ===== */
-let INV={agg:[]},DISC={headers:[],rows:[]},DV=[],invP='day',RE=[];const CH={};
-const NR='Need Refill',RC={'Need Refill':'#dc2626','High Stock':'#0284c7','Over Stock':'#9333ea','Safe':'#16a34a','No Movement':'#94a3b8','Need Penghabisan':'#ea580c','Discontinue':'#64748b'};
+let INV={agg:[]},DISC={headers:[],rows:[]},NOMOV={headers:[],rows:[]},DV=[],invP='day',RE=[];const CH={};
+const NR='Need Refill',RC={'Need Refill':'#dc2626','Safe':'#16a34a','High Stock':'#0284c7','Over Stock':'#9333ea','No Movement':'#94a3b8','Need Penghabisan':'#ea580c','Discontinue':'#64748b'};
 const rcol=l=>RC[l]||'#14b8a6',ORD=Object.keys(RC),ordRe=(a,b)=>(ORD.indexOf(a)+1||99)-(ORD.indexOf(b)+1||99);
 const AG=['0','1-3','4-6','7-10','11-15','16-30','>30'],MN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 const colIdx=(h,k,fb)=>{const i=h.findIndex(x=>x.toUpperCase().includes(k));return i>=0?i:fb};
 const fm=v=>Number.isInteger(v)?v:v.toFixed(1);
 const bKey=(d,w,p)=>p==='day'?d:p==='week'?d.slice(0,4)+'-'+(w||'W?'):d.slice(0,7);
 const bLab=(d,w,p)=>p==='day'?d.slice(8)+'/'+d.slice(5,7):p==='week'?(w||'W?'):MN[+d.slice(5,7)-1]+' '+d.slice(2,4);
-function refreshExtra(){if($('pane-inv').classList.contains('active'))renderInv();if($('pane-disc').classList.contains('active'))renderDisc()}
+function refreshExtra(){if($('pane-inv').classList.contains('active'))renderInv();if($('pane-disc').classList.contains('active'))renderList('d');if($('pane-nomov').classList.contains('active'))renderList('n')}
 function stack(id,labels,series,click){
   if(CH[id])CH[id].destroy();
   const sets=series.filter(s=>s.data.some(v=>v>0)).map(s=>({label:s.name,data:s.data,lbl:'#fff',backgroundColor:rcol(s.name),borderRadius:3}));
@@ -596,28 +611,30 @@ function renderInv(){
 }
 $('invP').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;invP=b.dataset.p;[...$('invP').children].forEach(x=>x.classList.toggle('active',x===b));renderInv()});
 
-function renderDisc(){
-  const h=DISC.headers;
-  if(!h.length){$('dCount').textContent=DISC.error||'Belum ada data.';$('dHead').innerHTML='';$('dBody').innerHTML='';return}
+const LV={d:[],n:[]},LT={d:['Discontinue_Penghabisan_','Material Discontinue & Need Penghabisan'],n:['No_Movement_Material_','No Movement Material']};
+function renderList(k){
+  const D=k==='d'?DISC:NOMOV,h=D.headers,E=x=>$(k+x),CK=k+'Chart';
+  if(!h.length){E('Count').textContent=D.error||'Belum ada data.';E('Head').innerHTML='';E('Body').innerHTML='';if(CH[CK]){CH[CK].destroy();CH[CK]=null}return}
   const ia=colIdx(h,'AREA',0),ir=colIdx(h,'REORDER',10);
-  const f={a:$('dArea').value,r:$('dRe').value,q:$('dQ').value.trim().toLowerCase()};
-  const ok=(r,s)=>(s==='a'||!f.a||r[ia]===f.a)&&(s==='r'||!f.r||r[ir]===f.r)&&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
-  fill('dArea',DISC.rows.filter(r=>ok(r,'a')).map(r=>r[ia]),f.a,'-- Semua Area --');
-  fill('dRe',DISC.rows.filter(r=>ok(r,'r')).map(r=>r[ir]),f.r,'-- Semua Reorder Item --');
-  DV=DISC.rows.filter(r=>ok(r));
-  $('dCount').innerHTML='Menampilkan: <b>'+DV.length+'</b> dari '+DISC.rows.length+' baris data';
-  $('dHead').innerHTML='<tr>'+h.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr>';
-  $('dBody').innerHTML=DV.length?DV.map(r=>'<tr>'+r.map((c,i)=>i===ir&&c?'<td><span class="badge" style="background:'+rcol(c)+'">'+esc(c)+'</span></td>':'<td>'+esc(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'" class="text-center text-muted py-4">Tidak ada data yang sesuai filter</td></tr>';
-  const ar=[...new Set(DV.map(r=>r[ia]))].sort(),rs=[...new Set(DV.map(r=>r[ir]))].sort(ordRe);
-  stack('dChart',ar,rs.map(re=>({name:re,data:ar.map(a=>DV.filter(r=>r[ia]===a&&r[ir]===re).length)})),a=>{$('dArea').value=a;renderDisc()});
+  const f={a:E('Area').value,r:E('Re').value,q:E('Q').value.trim().toLowerCase()};
+  const ok=(r,x)=>(x==='a'||!f.a||r[ia]===f.a)&&(x==='r'||!f.r||r[ir]===f.r)&&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
+  fill(k+'Area',D.rows.filter(r=>ok(r,'a')).map(r=>r[ia]),f.a,'-- Semua Area --');
+  fill(k+'Re',D.rows.filter(r=>ok(r,'r')).map(r=>r[ir]),f.r,'-- Semua Reorder Item --');
+  const V=LV[k]=D.rows.filter(r=>ok(r));
+  E('Count').innerHTML='Menampilkan: <b>'+V.length+'</b> dari '+D.rows.length+' baris data';
+  E('Head').innerHTML='<tr>'+h.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr>';
+  E('Body').innerHTML=V.length?V.map(r=>'<tr>'+r.map((c,i)=>i===ir&&c?'<td><span class="badge" style="background:'+rcol(c)+'">'+esc(c)+'</span></td>':'<td>'+esc(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'" class="text-center text-muted py-4">Tidak ada data yang sesuai filter</td></tr>';
+  const ar=[...new Set(V.map(r=>r[ia]))].sort(),rs=[...new Set(V.map(r=>r[ir]))].sort(ordRe);
+  stack(CK,ar,rs.map(re=>({name:re,data:ar.map(a=>V.filter(r=>r[ia]===a&&r[ir]===re).length)})),a=>{E('Area').value=a;renderList(k)});
 }
-function resetDisc(){['dArea','dRe','dQ'].forEach(i=>$(i).value='');renderDisc()}
-function exportDisc(t){
-  if(!DV.length)return toast('Tidak ada data untuk di-export!','warning');
-  const n='Discontinue_Penghabisan_'+new Date().toISOString().slice(0,10);
-  if(t==='x'){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([DISC.headers,...DV]),'Data');XLSX.writeFile(wb,n+'.xlsx')}
-  else{const d=new window.jspdf.jsPDF({orientation:'landscape'});d.text('Jumpstart - Material Discontinue & Need Penghabisan',14,15);
-    d.autoTable({head:[DISC.headers],body:DV,startY:20,styles:{fontSize:6,cellPadding:1.5},headStyles:{fillColor:[2,132,199]}});d.save(n+'.pdf')}
+function resetList(k){['Area','Re','Q'].forEach(x=>$(k+x).value='');renderList(k)}
+function exportList(k,t){
+  const V=LV[k],H2=(k==='d'?DISC:NOMOV).headers;
+  if(!V.length)return toast('Tidak ada data untuk di-export!','warning');
+  const n=LT[k][0]+new Date().toISOString().slice(0,10);
+  if(t==='x'){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([H2,...V]),'Data');XLSX.writeFile(wb,n+'.xlsx')}
+  else{const d=new window.jspdf.jsPDF({orientation:'landscape'});d.text('Jumpstart - '+LT[k][1],14,15);
+    d.autoTable({head:[H2],body:V,startY:20,styles:{fontSize:6,cellPadding:1.5},headStyles:{fillColor:[2,132,199]}});d.save(n+'.pdf')}
   toast('File berhasil didownload!','success');
 }
 
