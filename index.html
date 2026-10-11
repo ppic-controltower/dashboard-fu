@@ -193,18 +193,19 @@ body.collapsed .toolbar{padding-left:50px}
 
     <!-- TAB 2 -->
     <div class="page" id="pane-inv">
-  <div class="card card-custom p-3"><div class="row g-3 align-items-end">
-    <div class="col-12 col-md-4"><label class="form-label small fw-semibold text-secondary">Periode</label>
-      <div class="btn-group w-100" id="invP"><button class="btn btn-sm btn-outline-primary active" data-p="day">Harian</button><button class="btn btn-sm btn-outline-primary" data-p="week">Mingguan</button><button class="btn btn-sm btn-outline-primary" data-p="month">Bulanan</button></div></div>
-    <div class="col-12 col-md-4"><label class="form-label small fw-semibold text-secondary">Area</label><select id="iArea" class="form-select form-select-sm" onchange="renderInv()"></select></div>
-    <div class="col-12 col-md-4 text-md-end small text-muted" id="invInfo"></div>
+  <div class="card card-custom p-3"><div class="row g-3 align-items-center">
+    <div class="col-12 col-md-5"><div class="btn-group w-100" id="invP"><button class="btn btn-sm btn-outline-primary active" data-p="day">Harian</button><button class="btn btn-sm btn-outline-primary" data-p="week">Mingguan</button><button class="btn btn-sm btn-outline-primary" data-p="month">Bulanan</button></div></div>
+    <div class="col-12 col-md-7 small text-muted" id="invInfo"></div>
   </div></div>
+  <div class="card card-custom p-3"><h6 class="fw-bold mb-1" id="invCmpT"></h6><div class="small text-muted mb-2">Angka besar = kondisi sekarang, angka kecil = selisih vs periode sebelumnya. <span class="text-danger">Merah</span> = memburuk, <span class="text-success">hijau</span> = membaik, abu = netral.</div><div class="table-wrap"><table class="table table-sm table-hover align-middle mb-0" id="invCmp"></table></div></div>
   <div class="row g-3 mb-3">
-    <div class="col-12 col-xl-7"><div class="card card-custom p-3 h-100 mb-0"><h6 class="fw-bold" id="invT1"></h6><div style="position:relative;height:300px"><canvas id="invChart"></canvas></div></div></div>
-    <div class="col-12 col-xl-5"><div class="card card-custom p-3 h-100 mb-0"><h6 class="fw-bold" id="invT2"></h6><div style="position:relative;height:300px"><canvas id="agingChart"></canvas></div></div></div>
+    <div class="col-12 col-xl-7"><div class="card card-custom p-3 h-100 mb-0"><h6 class="fw-bold" id="nrT"></h6><div class="table-wrap"><table class="table table-sm table-hover align-middle mb-0" id="invNR"></table></div></div></div>
+    <div class="col-12 col-xl-5"><div class="card card-custom p-3 h-100 mb-0"><h6 class="fw-bold" id="agT"></h6><div class="table-wrap"><table class="table table-sm table-hover align-middle mb-0" id="invAg"></table></div></div></div>
   </div>
-  <div class="card card-custom p-3"><h6 class="fw-bold" id="sumT"></h6><div class="table-wrap"><table class="table table-sm table-hover align-middle mb-0" id="invSum"></table></div></div>
-  <div class="card card-custom p-3"><h6 class="fw-bold">Trend Bulanan Need Refill per Area <span class="text-muted fw-normal small">(rata-rata item per hari; <span class="text-danger">&#9650; naik</span> = kurang baik)</span></h6><div class="table-wrap"><table class="table table-sm table-hover align-middle mb-0" id="invTrend"></table></div></div>
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-xl-6"><div class="card card-custom p-3 h-100 mb-0"><h6 class="fw-bold" id="hisT"></h6><div class="table-wrap"><table class="table table-sm table-hover align-middle mb-0" id="invHis"></table></div></div></div>
+    <div class="col-12 col-xl-6"><div class="card card-custom p-3 h-100 mb-0"><h6 class="fw-bold" id="agcT"></h6><div style="position:relative;height:280px"><canvas id="agingChart"></canvas></div></div></div>
+  </div>
 </div>
 <div class="page" id="pane-disc">
   <div class="row g-3">
@@ -550,34 +551,48 @@ function invSeries(area,p){
   const B={};Object.keys(day).sort().forEach(d=>{const k=bKey(d,dw[d],p);(B[k]=B[k]||{l:bLab(d,dw[d],p),a:[]}).a.push(day[d])});
   return Object.keys(B).sort().map(k=>{const b=B[k],o={l:b.l};RE.forEach(re=>o[re]=+(b.a.reduce((s,x)=>s+(x[re]||0),0)/b.a.length).toFixed(1));return o});
 }
+const BADUP=['Need Refill','Over Stock','No Movement'];
+function dlt(re,d){if(!d)return'<span class="small text-muted">=</span>';const up=d>0,bad=BADUP.includes(re)?up:re==='Safe'?!up:null;
+  return'<span class="small '+(bad===null?'text-secondary':bad?'text-danger':'text-success')+'">'+(up?'&#9650;':'&#9660;')+fm(Math.abs(d))+'</span>'}
+function pct(c,v){if(v===null||!v)return'-';const g=(c-v)/v*100;return'<span class="'+(g>0?'text-danger':g<0?'text-success':'text-secondary')+'">'+(g>0?'+':'')+g.toFixed(1)+'%</span>'}
+const r1=x=>+x.toFixed(1),agOrd=(a,b)=>(AG.indexOf(a)+1||98)-(AG.indexOf(b)+1||98);
 function renderInv(){
   const ag=INV.agg;
   if(!ag.length){$('invInfo').textContent=INV.error||'Belum ada data Inventory Recap.';return}
   RE=[...new Set(ag.map(x=>x[3]))].sort(ordRe);
-  const areas=[...new Set(ag.map(x=>x[2]))].sort();
-  fill('iArea',areas,$('iArea').value,'-- Semua Area --');
-  const area=$('iArea').value,p=invP,dates=[...new Set(ag.map(x=>x[0]))].sort(),last=dates[dates.length-1],ld=last.split('-').reverse().join('/');
-  $('invInfo').innerHTML='Snapshot terakhir: <b>'+ld+'</b> &middot; '+dates.length+' hari data'+(p==='day'?'':' &middot; nilai = rata-rata harian per periode');
-  const s=invSeries(area,p).slice(-({day:14,week:12,month:12}[p]));
-  $('invT1').textContent='Status Reorder Item - '+({day:'Harian',week:'Mingguan (Report By Week)',month:'Bulanan'}[p])+' - '+(area||'Semua Area');
-  stack('invChart',s.map(o=>o.l),RE.map(re=>({name:re,data:s.map(o=>o[re]||0)})));
-  const g={};ag.forEach(x=>{if(x[0]!==last||(area&&x[2]!==area))return;const o=g[x[4]]=g[x[4]]||{};o[x[3]]=(o[x[3]]||0)+x[5]});
-  const ak=Object.keys(g).sort((a,b)=>(AG.indexOf(a)+1||98)-(AG.indexOf(b)+1||98));
-  $('invT2').textContent='Remaining Aging Reorder Item (sisa hari stock) - '+ld;
-  stack('agingChart',ak,RE.map(re=>({name:re,data:ak.map(k=>(g[k]&&g[k][re])||0)})));
-  const rows=areas.map(a=>{const q=invSeries(a,p);return[a,q[q.length-1]||{}]}),tot={};
-  const tr=(a,o,b)=>{const t=RE.reduce((x,re)=>x+(o[re]||0),0);return'<tr'+(b?' class="table-light fw-bold"':'')+'><td class="fw-semibold">'+esc(a)+'</td>'+RE.map(re=>'<td class="text-end">'+fm(o[re]||0)+'</td>').join('')+'<td class="text-end fw-bold">'+fm(t)+'</td><td class="text-end">'+(t?((o[NR]||0)/t*100).toFixed(1):0)+'%</td></tr>'};
-  rows.forEach(r=>RE.forEach(re=>tot[re]=(tot[re]||0)+(r[1][re]||0)));
-  $('sumT').textContent='Summary per Area - '+(p==='day'?'Hari ':p==='week'?'Minggu ':'Bulan ')+((rows[0]&&invSeries(rows[0][0],p).slice(-1)[0]||{}).l||'');
-  $('invSum').innerHTML='<thead><tr><th>Area</th>'+RE.map(re=>'<th class="text-end">'+esc(re)+'</th>').join('')+'<th class="text-end">Total</th><th class="text-end">% Need Refill</th></tr></thead><tbody>'+rows.map(r=>tr(r[0],r[1])).join('')+tr('Total All Area',tot,1)+'</tbody>';
-  const mo=invSeries(null,'month').map(o=>o.l).slice(-6);
-  $('invTrend').innerHTML='<thead><tr><th>Area</th>'+mo.map(m=>'<th class="text-end">'+m+'</th>').join('')+'<th class="text-end">Avg Kenaikan / Bulan</th></tr></thead><tbody>'+['',...areas].map(a=>{
-    const q=invSeries(a||null,'month');let prev=null;const gs=[];
-    const cells=mo.map(m=>{const o=q.find(x=>x.l===m);if(!o)return'<td class="text-end text-muted">-</td>';const v=o[NR]||0;let b='';
-      if(prev!==null&&prev>0){const gr=(v-prev)/prev*100;gs.push(gr);b=' <span class="small '+(gr>0?'text-danger':'text-success')+'">'+(gr>0?'&#9650;':'&#9660;')+Math.abs(gr).toFixed(1)+'%</span>'}
-      prev=v;return'<td class="text-end">'+fm(v)+b+'</td>'});
-    const av=gs.length?gs.reduce((x,y)=>x+y,0)/gs.length:null;
-    return'<tr><td class="fw-semibold">'+(a?esc(a):'Total All Area')+'</td>'+cells.join('')+'<td class="text-end fw-bold '+(av===null?'':av>0?'text-danger':'text-success')+'">'+(av===null?'-':(av>0?'+':'')+av.toFixed(1)+'%')+'</td></tr>'}).join('')+'</tbody>';
+  const p=invP,dw={},P={},dates=[...new Set(ag.map(x=>x[0]))].sort(),areas=[...new Set(ag.map(x=>x[2]))].sort(),fd=d=>d.split('-').reverse().join('/');
+  ag.forEach(x=>dw[x[0]]=x[1]);
+  dates.forEach(d=>{const k=bKey(d,dw[d],p);(P[k]=P[k]||{l:bLab(d,dw[d],p)}).last=d});
+  const pk=Object.keys(P).sort(),cu=P[pk[pk.length-1]],pv=P[pk.length>1?pk[pk.length-2]:'']||null;
+  const W={day:['Hari ini','Kemarin'],week:['Minggu ini','Minggu lalu'],month:['Bulan ini','Bulan lalu']}[p],U={day:'hari',week:'minggu',month:'bulan'}[p];
+  $('invInfo').innerHTML='<b>'+W[0]+'</b> ('+cu.l+') vs <b>'+W[1]+'</b> ('+(pv?pv.l:'belum ada')+') &middot; data terakhir '+fd(dates[dates.length-1])+(p==='day'?'':' &middot; nilai = rata-rata harian per '+U);
+  const cmp=a=>{const q=invSeries(a||null,p);return[q[q.length-1]||{},q[q.length-2]||null]},tot=o=>r1(RE.reduce((s,re)=>s+(o[re]||0),0));
+  // 1. Tabel perbandingan semua status per area
+  const row=(n,c,v,b)=>'<tr'+(b?' class="table-light fw-bold"':'')+'><td class="fw-semibold">'+esc(n)+'</td>'+RE.map(re=>'<td class="text-end">'+fm(c[re]||0)+' '+(v?dlt(re,r1((c[re]||0)-(v[re]||0))):'')+'</td>').join('')+'<td class="text-end fw-bold">'+fm(tot(c))+' '+(v?dlt('',r1(tot(c)-tot(v))):'')+'</td></tr>';
+  $('invCmpT').textContent='Perbandingan Status Reorder Item per Area: '+W[0]+' ('+cu.l+') vs '+W[1]+' ('+(pv?pv.l:'-')+')';
+  $('invCmp').innerHTML='<thead><tr><th>Area</th>'+RE.map(re=>'<th class="text-end">'+esc(re)+'</th>').join('')+'<th class="text-end">Total</th></tr></thead><tbody>'+areas.map(a=>{const[c,v]=cmp(a);return row(a,c,v)}).join('')+(()=>{const[c,v]=cmp('');return row('Total All Area',c,v,1)})()+'</tbody>';
+  // 2. Need Refill per area (urut kenaikan terbesar)
+  const nr=areas.map(a=>{const[c,v]=cmp(a);return{a,c:c[NR]||0,v:v?v[NR]||0:null}}).sort((x,y)=>(y.c-(y.v||0))-(x.c-(x.v||0)));
+  const[tc,tv]=cmp('');nr.push({a:'Total All Area',c:tc[NR]||0,v:tv?tv[NR]||0:null,t:1});
+  $('nrT').textContent='Need Refill: '+W[0]+' vs '+W[1]+' (urut kenaikan terbesar)';
+  $('invNR').innerHTML='<thead><tr><th>Area</th><th class="text-end">'+W[1]+'</th><th class="text-end">'+W[0]+'</th><th class="text-end">Selisih</th><th class="text-end">%</th></tr></thead><tbody>'+nr.map(o=>'<tr'+(o.t?' class="table-light fw-bold"':'')+'><td class="fw-semibold">'+esc(o.a)+'</td><td class="text-end">'+(o.v===null?'-':fm(o.v))+'</td><td class="text-end fw-bold">'+fm(o.c)+'</td><td class="text-end">'+(o.v===null?'-':dlt(NR,r1(o.c-o.v)))+'</td><td class="text-end">'+pct(o.c,o.v)+'</td></tr>').join('')+'</tbody>';
+  // 3. Aging Need Refill (snapshot akhir periode)
+  const ga=(d,re)=>{const g={};ag.forEach(x=>{if(x[0]===d&&(!re||x[3]===re))g[x[4]]=(g[x[4]]||0)+x[5]});return g};
+  const gc=ga(cu.last,NR),gp=pv?ga(pv.last,NR):null,ks=[...new Set([...Object.keys(gc),...(gp?Object.keys(gp):[])])].sort(agOrd);
+  const ar=(k,c,v,b)=>'<tr'+(b?' class="table-light fw-bold"':'')+'><td class="fw-semibold">'+k+'</td><td class="text-end">'+(v===null?'-':v)+'</td><td class="text-end fw-bold">'+c+'</td><td class="text-end">'+(v===null?'-':dlt(NR,c-v))+'</td></tr>';
+  $('agT').textContent='Aging Need Refill (sisa hari stock): '+fd(cu.last)+' vs '+(pv?fd(pv.last):'-');
+  $('invAg').innerHTML='<thead><tr><th>Sisa hari</th><th class="text-end">Sebelumnya</th><th class="text-end">Sekarang</th><th class="text-end">Selisih</th></tr></thead><tbody>'+ks.map(k=>ar(k,gc[k]||0,gp?gp[k]||0:null)).join('')+ar('Total',Object.values(gc).reduce((x,y)=>x+y,0),gp?Object.values(gp).reduce((x,y)=>x+y,0):null,1)+'</tbody>';
+  // 4. Riwayat Need Refill (total semua area) + rata-rata kenaikan
+  const q=invSeries(null,p).slice(-8),gs=[];
+  const hs=q.map((o,i)=>{const v=o[NR]||0,pr=i?q[i-1][NR]||0:null;if(pr)gs.push((v-pr)/pr*100);return'<tr><td>'+esc(o.l)+'</td><td class="text-end fw-bold">'+fm(v)+'</td><td class="text-end">'+(pr===null?'-':dlt(NR,r1(v-pr)))+'</td><td class="text-end">'+pct(v,pr)+'</td></tr>'}).reverse();
+  const av=gs.length?gs.reduce((x,y)=>x+y,0)/gs.length:null;
+  $('hisT').textContent='Riwayat Need Refill - total semua area (per '+U+')';
+  $('invHis').innerHTML='<thead><tr><th>Periode</th><th class="text-end">Need Refill</th><th class="text-end">Selisih</th><th class="text-end">%</th></tr></thead><tbody>'+hs.join('')+'<tr class="table-light fw-bold"><td colspan="3">Rata-rata kenaikan per '+U+'</td><td class="text-end '+(av===null?'':av>0?'text-danger':'text-success')+'">'+(av===null?'-':(av>0?'+':'')+av.toFixed(1)+'%')+'</td></tr></tbody>';
+  // 5. Diagram aging semua status
+  const g2=ga(cu.last,''),k2=Object.keys(g2).sort(agOrd),g3={};
+  ag.forEach(x=>{if(x[0]===cu.last){const o=g3[x[4]]=g3[x[4]]||{};o[x[3]]=(o[x[3]]||0)+x[5]}});
+  $('agcT').textContent='Sebaran Remaining Aging semua status - '+fd(cu.last);
+  stack('agingChart',k2,RE.map(re=>({name:re,data:k2.map(k=>(g3[k]&&g3[k][re])||0)})));
 }
 $('invP').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;invP=b.dataset.p;[...$('invP').children].forEach(x=>x.classList.toggle('active',x===b));renderInv()});
 
