@@ -131,7 +131,8 @@ body.collapsed .toolbar{padding-left:50px}
     <nav>
       <a href="#" class="mi active" data-page="monitoring"><i class="fa-solid fa-table-list"></i><span>Data Monitoring &amp; Status</span></a>
       <a href="#" class="mi" data-page="schedule"><i class="fa-solid fa-chart-pie"></i><span>Area Analytics &amp; Schedule</span></a>
-    <a href="#" class="mi" data-page="inv"><i class="fa-solid fa-chart-line"></i><span>Inventory Recap &amp; Productivity</span></a>
+    <a href="#" class="mi" data-page="master"><i class="fa-solid fa-warehouse"></i><span>Master Inventory All Region</span></a>
+      <a href="#" class="mi" data-page="inv"><i class="fa-solid fa-chart-line"></i><span>Inventory Recap &amp; Productivity</span></a>
       <a href="#" class="mi" data-page="disc"><i class="fa-solid fa-ban"></i><span>Discontinue &amp; Penghabisan</span></a>
       <a href="#" class="mi" data-page="nomov"><i class="fa-solid fa-box-archive"></i><span>No Movement Material</span></a>
     </nav>
@@ -196,7 +197,21 @@ body.collapsed .toolbar{padding-left:50px}
     </div>
 
     <!-- TAB 2 -->
-    <div class="page" id="pane-inv">
+    <div class="page" id="pane-master">
+  <div class="row g-3">
+    <div class="col-12 col-xl-4"><div class="card card-custom p-3 h-100"><div class="row g-2">
+      <div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Tanggal Recap</label><select id="mDate" class="form-select form-select-sm" onchange="mDateChange()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Area</label><select id="mArea" class="form-select form-select-sm" onchange="renderMaster()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Reorder Item</label><select id="mRe" class="form-select form-select-sm" onchange="renderMaster()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Sisa Hari (Day(s) Until Stock Out)</label><select id="mDay" class="form-select form-select-sm" onchange="renderMaster()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">PO Status</label><select id="mPo" class="form-select form-select-sm" onchange="renderMaster()"></select></div>
+      <div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Cari (semua kolom)</label><input id="mQ" class="form-control form-control-sm" placeholder="material, supplier..." oninput="renderMaster()"></div>
+      <div class="col-12 text-end mt-2"><button class="btn btn-sm btn-outline-danger px-4 fw-semibold" onclick="resetMaster()"><i class="fa-solid fa-arrows-rotate me-1"></i>Reset Filter</button></div>
+    </div></div></div>
+    <div class="col-12 col-md-6 col-xl-4"><div class="card card-custom p-3 h-100"><h6 class="fw-bold text-secondary small">Reorder Item per Area <span class="fw-normal">(klik batang untuk filter)</span></h6><div style="position:relative;height:270px"><canvas id="mChart1"></canvas></div></div></div>
+    <div class="col-12 col-md-6 col-xl-4"><div class="card card-custom p-3 h-100"><h6 class="fw-bold text-secondary small">PO Status per Area</h6><div style="position:relative;height:270px"><canvas id="mChart2"></canvas></div></div></div>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mb-2"><span class="text-muted small" id="mCount"></span>
+    <div class="btn-group"><button class="btn btn-success btn-sm" onclick="exportMaster('x')"><i class="fa-solid fa-file-excel me-1"></i>Export Excel</button><button class="btn btn-danger btn-sm" onclick="exportMaster('p')"><i class="fa-solid fa-file-pdf me-1"></i>Export PDF</button></div></div>
+  <div class="card card-custom p-3"><div class="table-wrap"><table class="table table-hover align-middle mb-0"><thead id="mHead"></thead><tbody id="mBody"></tbody></table></div></div>
+</div>
+<div class="page" id="pane-inv">
   <div class="card card-custom p-3"><div class="row g-3 align-items-center">
     <div class="col-12 col-md-5"><div class="btn-group w-100" id="invP"><button class="btn btn-sm btn-outline-primary active" data-p="day">Harian</button><button class="btn btn-sm btn-outline-primary" data-p="week">Mingguan</button><button class="btn btn-sm btn-outline-primary" data-p="month">Bulanan</button></div></div>
     <div class="col-12 col-md-7 small text-muted" id="invInfo"></div>
@@ -346,7 +361,7 @@ function load(silent){
     if(d.error)throw new Error(d.error);
     if(!d.headers||!d.headers.length){loading(false);toast('Data kosong atau format tidak sesuai.','warning');return}
     H=d.headers;ROWS=d.rows;lastVersion=d.version;$('updatedAt').textContent=d.updatedAt;
-    DISC=d.disc||{headers:[],rows:[]};NOMOV=d.nomov||{headers:[],rows:[]};INV=d.inv||{agg:[]};resolveCols();apply();loading(false);refreshExtra();
+    DISC=d.disc||{headers:[],rows:[]};NOMOV=d.nomov||{headers:[],rows:[]};MST=d.master||MST;INV=d.inv||{agg:[]};resolveCols();apply();loading(false);refreshExtra();
     toast(silent?'Data diperbarui otomatis':'Data live berhasil dimuat!',silent?'info':'success');
     if($('pane-schedule').classList.contains('active'))renderAnalytics();
   }).catch(e=>{loading(false);toast('Gagal memuat data: '+e.message,'danger')});
@@ -369,9 +384,9 @@ function match(r,f,skip){
     &&(skip==='po'||!f.po||String(r[IDX.po]).toLowerCase().includes(f.po))
     &&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
 }
-function fill(id,vals,sel,label){
+function fill(id,vals,sel,label,cmp){
   const el=$(id);
-  el.innerHTML='<option value="">'+label+'</option>'+[...new Set(vals.filter(Boolean))].sort().map(v=>'<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(v)+'</option>').join('');
+  el.innerHTML='<option value="">'+label+'</option>'+[...new Set(vals.filter(Boolean))].sort(cmp).map(v=>'<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(v)+'</option>').join('');
 }
 function populate(){
   const f=fv();
@@ -523,7 +538,7 @@ function toggleSidebar(){document.body.classList.toggle(innerWidth<992?'sb-open'
 function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='pane-'+p));
   document.querySelectorAll('.mi').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
-  if(p==='schedule')renderAnalytics();if(p==='inv')renderInv();if(p==='disc')renderList('d');if(p==='nomov')renderList('n');
+  if(p==='schedule')renderAnalytics();if(p==='master')renderMaster();if(p==='inv')renderInv();if(p==='disc')renderList('d');if(p==='nomov')renderList('n');
   if(innerWidth<992)document.body.classList.remove('sb-open');
 }
 document.querySelectorAll('.mi').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page)}));
@@ -546,7 +561,7 @@ function exportPDF(){
 }
 
 /* ===== FITUR BARU: Inventory Recap & Discontinue ===== */
-let INV={agg:[]},DISC={headers:[],rows:[]},NOMOV={headers:[],rows:[]},DV=[],invP='day',RE=[];const CH={};
+let INV={agg:[]},DISC={headers:[],rows:[]},NOMOV={headers:[],rows:[]},MST={headers:[],rows:[],date:'',dates:[]},MV=[],DV=[],invP='day',RE=[];const CH={};
 const NR='Need Refill',RC={'Need Refill':'#dc2626','Safe':'#16a34a','High Stock':'#0284c7','Over Stock':'#9333ea','No Movement':'#94a3b8','Need Penghabisan':'#ea580c','Discontinue':'#64748b'};
 const rcol=l=>RC[l]||'#14b8a6',ORD=Object.keys(RC),ordRe=(a,b)=>(ORD.indexOf(a)+1||99)-(ORD.indexOf(b)+1||99);
 const AG=['0','1-3','4-6','7-10','11-15','16-30','>30'],MN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
@@ -554,10 +569,10 @@ const colIdx=(h,k,fb)=>{const i=h.findIndex(x=>x.toUpperCase().includes(k));retu
 const fm=v=>Number.isInteger(v)?v:v.toFixed(1);
 const bKey=(d,w,p)=>p==='day'?d:p==='week'?d.slice(0,4)+'-'+(w||'W?'):d.slice(0,7);
 const bLab=(d,w,p)=>p==='day'?d.slice(8)+'/'+d.slice(5,7):p==='week'?(w||'W?'):MN[+d.slice(5,7)-1]+' '+d.slice(2,4);
-function refreshExtra(){if($('pane-inv').classList.contains('active'))renderInv();if($('pane-disc').classList.contains('active'))renderList('d');if($('pane-nomov').classList.contains('active'))renderList('n')}
-function stack(id,labels,series,click){
+function refreshExtra(){if($('pane-master').classList.contains('active'))renderMaster();if($('pane-inv').classList.contains('active'))renderInv();if($('pane-disc').classList.contains('active'))renderList('d');if($('pane-nomov').classList.contains('active'))renderList('n')}
+function stack(id,labels,series,click,cf){
   if(CH[id])CH[id].destroy();
-  const sets=series.filter(s=>s.data.some(v=>v>0)).map(s=>({label:s.name,data:s.data,lbl:'#fff',backgroundColor:rcol(s.name),borderRadius:3}));
+  const sets=series.filter(s=>s.data.some(v=>v>0)).map(s=>({label:s.name,data:s.data,lbl:'#fff',backgroundColor:(cf||rcol)(s.name),borderRadius:3}));
   CH[id]=new Chart($(id),{type:'bar',data:{labels,datasets:sets},plugins:[segLabels],options:{responsive:true,maintainAspectRatio:false,
     plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{mode:'index',intersect:false}},
     scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{precision:0}}},
@@ -639,6 +654,45 @@ function exportList(k,t){
   if(t==='x'){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([H2,...V]),'Data');XLSX.writeFile(wb,n+'.xlsx')}
   else{const d=new window.jspdf.jsPDF({orientation:'landscape'});d.text('Jumpstart - '+LT[k][1],14,15);
     d.autoTable({head:[H2],body:V,startY:20,styles:{fontSize:6,cellPadding:1.5},headStyles:{fillColor:[2,132,199]}});d.save(n+'.pdf')}
+  toast('File berhasil didownload!','success');
+}
+
+/* ===== Master Inventory All Region ===== */
+const dayB=v=>{v=Number(v);return isNaN(v)?'-':v<=0?'0':v<=3?'1-3':v<=6?'4-6':v<=10?'7-10':v<=15?'11-15':v<=30?'16-30':'>30'};
+const pcol=l=>({'Need Open PO':'#dc2626','Hold PO':'#d97706','OK':'#16a34a'}[l]||'#94a3b8');
+function renderMaster(){
+  const h=MST.headers;
+  if(!h.length){$('mCount').textContent=MST.error||'Belum ada data.';$('mHead').innerHTML='';$('mBody').innerHTML='';return}
+  const ia=colIdx(h,'AREA',0),ir=colIdx(h,'REORDER',10),im=colIdx(h,'DAY(S)',11),ip=colIdx(h,'PO STATUS',20),fd=d=>d.split('-').reverse().join('/');
+  $('mDate').innerHTML=MST.dates.slice().reverse().map(d=>'<option value="'+d+'"'+(d===MST.date?' selected':'')+'>'+fd(d)+'</option>').join('');
+  const f={a:$('mArea').value,r:$('mRe').value,d:$('mDay').value,p:$('mPo').value,q:$('mQ').value.trim().toLowerCase()};
+  const ok=(r,x)=>(x==='a'||!f.a||r[ia]===f.a)&&(x==='r'||!f.r||r[ir]===f.r)&&(x==='d'||!f.d||dayB(r[im])===f.d)&&(x==='p'||!f.p||r[ip]===f.p)&&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
+  const R=MST.rows;
+  fill('mArea',R.filter(r=>ok(r,'a')).map(r=>r[ia]),f.a,'-- Semua Area --');
+  fill('mRe',R.filter(r=>ok(r,'r')).map(r=>r[ir]),f.r,'-- Semua Reorder Item --',ordRe);
+  fill('mDay',R.filter(r=>ok(r,'d')).map(r=>dayB(r[im])),f.d,'-- Semua Sisa Hari --',agOrd);
+  fill('mPo',R.filter(r=>ok(r,'p')).map(r=>r[ip]),f.p,'-- Semua PO Status --');
+  const V=MV=R.filter(r=>ok(r));
+  $('mCount').innerHTML='Data tanggal <b>'+fd(MST.date)+'</b> &middot; Menampilkan: <b>'+V.length+'</b> dari '+R.length+' baris data';
+  $('mHead').innerHTML='<tr>'+h.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr>';
+  $('mBody').innerHTML=V.length?V.map(r=>'<tr>'+r.map((c,i)=>c&&i===ir?'<td><span class="badge" style="background:'+rcol(c)+'">'+esc(c)+'</span></td>':c&&i===ip?'<td><span class="badge" style="background:'+pcol(c)+'">'+esc(c)+'</span></td>':'<td>'+esc(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'" class="text-center text-muted py-4">Tidak ada data yang sesuai filter</td></tr>';
+  const ar=[...new Set(V.map(r=>r[ia]))].sort(),pick=a=>{$('mArea').value=a;renderMaster()};
+  const mk=(id,ix,cmp,cf)=>{const ks=[...new Set(V.map(r=>r[ix]))].sort(cmp);stack(id,ar,ks.map(k=>({name:k,data:ar.map(a=>V.filter(r=>r[ia]===a&&r[ix]===k).length)})),pick,cf)};
+  mk('mChart1',ir,ordRe);mk('mChart2',ip,undefined,pcol);
+}
+function resetMaster(){['mArea','mRe','mDay','mPo','mQ'].forEach(i=>$(i).value='');renderMaster()}
+function mDateChange(){
+  fetch(apiUrl('&action=master&date='+$('mDate').value)).then(r=>r.json()).then(m=>{
+    if(m.error==='UNAUTHORIZED')return logout(true);if(m.error)throw new Error(m.error);
+    MST=m;['mArea','mRe','mDay','mPo'].forEach(i=>$(i).value='');renderMaster();
+  }).catch(e=>toast('Gagal memuat tanggal: '+e.message,'danger'));
+}
+function exportMaster(t){
+  if(!MV.length)return toast('Tidak ada data untuk di-export!','warning');
+  const n='Master_Inventory_'+MST.date;
+  if(t==='x'){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([MST.headers,...MV]),'Master');XLSX.writeFile(wb,n+'.xlsx')}
+  else{const d=new window.jspdf.jsPDF({orientation:'landscape',format:'a3'});d.text('Jumpstart - Master Inventory All Region ('+MST.date.split('-').reverse().join('/')+')',14,15);
+    d.autoTable({head:[MST.headers],body:MV,startY:20,styles:{fontSize:5,cellPadding:1},headStyles:{fillColor:[2,132,199]}});d.save(n+'.pdf')}
   toast('File berhasil didownload!','success');
 }
 
