@@ -107,6 +107,14 @@ body.collapsed .toolbar{padding-left:50px}
 .lg-img{display:block;height:72px;width:auto;margin:0 auto 6px}
 .who{display:flex;align-items:center;gap:8px;margin-right:6px;font-size:.88rem;color:#334155}
 .av{width:32px;height:32px;border-radius:50%;background:#0284c7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;box-shadow:0 2px 6px rgba(2,132,199,.35)}
+.ms{position:relative}
+.ms-btn{display:block;width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.ms-menu{display:none;position:absolute;z-index:1060;left:0;top:100%;margin-top:4px;min-width:100%;width:max-content;max-width:320px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.18);padding:8px}
+.ms.open .ms-menu{display:block}
+.ms-act{display:flex;justify-content:space-between;font-size:.78rem;margin-top:6px}
+.ms-opts{max-height:240px;overflow:auto;margin-top:4px}
+.ms-opt{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:.85rem;margin:0}
+.ms-opt:hover{background:#f1f5f9}
 </style>
 </head>
 <body>
@@ -200,7 +208,7 @@ body.collapsed .toolbar{padding-left:50px}
     <div class="page" id="pane-master">
   <div class="row g-3">
     <div class="col-12 col-xl-4"><div class="card card-custom p-3 h-100"><div class="row g-2">
-      <div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Tanggal Recap</label><select id="mDate" class="form-select form-select-sm" onchange="mDateChange()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Area</label><select id="mArea" class="form-select form-select-sm" onchange="renderMaster()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Reorder Item</label><select id="mRe" class="form-select form-select-sm" onchange="renderMaster()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Sisa Hari (Day(s) Until Stock Out)</label><select id="mDay" class="form-select form-select-sm" onchange="renderMaster()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">PO Status</label><select id="mPo" class="form-select form-select-sm" onchange="renderMaster()"></select></div>
+      <div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Tanggal Recap</label><select id="mDate" class="form-select form-select-sm" onchange="mDateChange()"></select></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Area</label><div class="ms" id="mArea" data-label="-- Semua Area --"><button type="button" class="form-select form-select-sm ms-btn"></button><div class="ms-menu"><input class="form-control form-control-sm ms-q" placeholder="Cari..."><div class="ms-act"><button type="button" class="btn btn-link btn-sm p-0" data-act="all">Pilih semua</button><button type="button" class="btn btn-link btn-sm p-0" data-act="none">Hapus pilihan</button></div><div class="ms-opts"></div></div></div></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Reorder Item</label><div class="ms" id="mRe" data-label="-- Semua Reorder Item --"><button type="button" class="form-select form-select-sm ms-btn"></button><div class="ms-menu"><input class="form-control form-control-sm ms-q" placeholder="Cari..."><div class="ms-act"><button type="button" class="btn btn-link btn-sm p-0" data-act="all">Pilih semua</button><button type="button" class="btn btn-link btn-sm p-0" data-act="none">Hapus pilihan</button></div><div class="ms-opts"></div></div></div></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Sisa Hari (Day(s) Until Stock Out)</label><div class="ms" id="mDay" data-label="-- Semua Sisa Hari --"><button type="button" class="form-select form-select-sm ms-btn"></button><div class="ms-menu"><input class="form-control form-control-sm ms-q" placeholder="Cari..."><div class="ms-act"><button type="button" class="btn btn-link btn-sm p-0" data-act="all">Pilih semua</button><button type="button" class="btn btn-link btn-sm p-0" data-act="none">Hapus pilihan</button></div><div class="ms-opts"></div></div></div></div><div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">PO Status</label><div class="ms" id="mPo" data-label="-- Semua PO Status --"><button type="button" class="form-select form-select-sm ms-btn"></button><div class="ms-menu"><input class="form-control form-control-sm ms-q" placeholder="Cari..."><div class="ms-act"><button type="button" class="btn btn-link btn-sm p-0" data-act="all">Pilih semua</button><button type="button" class="btn btn-link btn-sm p-0" data-act="none">Hapus pilihan</button></div><div class="ms-opts"></div></div></div></div>
       <div class="col-6"><label class="form-label small fw-semibold text-secondary mb-1">Cari (semua kolom)</label><input id="mQ" class="form-control form-control-sm" placeholder="material, supplier..." oninput="renderMaster()"></div>
       <div class="col-12 text-end mt-2"><button class="btn btn-sm btn-outline-danger px-4 fw-semibold" onclick="resetMaster()"><i class="fa-solid fa-arrows-rotate me-1"></i>Reset Filter</button></div>
     </div></div></div>
@@ -665,26 +673,26 @@ function renderMaster(){
   if(!h.length){$('mCount').textContent=MST.error||'Belum ada data.';$('mHead').innerHTML='';$('mBody').innerHTML='';return}
   const ia=colIdx(h,'AREA',0),ir=colIdx(h,'REORDER',10),im=colIdx(h,'DAY(S)',11),ip=colIdx(h,'PO STATUS',20),fd=d=>d.split('-').reverse().join('/');
   $('mDate').innerHTML=MST.dates.slice().reverse().map(d=>'<option value="'+d+'"'+(d===MST.date?' selected':'')+'>'+fd(d)+'</option>').join('');
-  const f={a:$('mArea').value,r:$('mRe').value,d:$('mDay').value,p:$('mPo').value,q:$('mQ').value.trim().toLowerCase()};
-  const ok=(r,x)=>(x==='a'||!f.a||r[ia]===f.a)&&(x==='r'||!f.r||r[ir]===f.r)&&(x==='d'||!f.d||dayB(r[im])===f.d)&&(x==='p'||!f.p||r[ip]===f.p)&&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
+  const f={a:msVal('mArea'),r:msVal('mRe'),d:msVal('mDay'),p:msVal('mPo'),q:$('mQ').value.trim().toLowerCase()};
+  const ok=(r,x)=>(x==='a'||!f.a.length||f.a.includes(r[ia]))&&(x==='r'||!f.r.length||f.r.includes(r[ir]))&&(x==='d'||!f.d.length||f.d.includes(dayB(r[im])))&&(x==='p'||!f.p.length||f.p.includes(r[ip]))&&(!f.q||r.some(c=>String(c).toLowerCase().includes(f.q)));
   const R=MST.rows;
-  fill('mArea',R.filter(r=>ok(r,'a')).map(r=>r[ia]),f.a,'-- Semua Area --');
-  fill('mRe',R.filter(r=>ok(r,'r')).map(r=>r[ir]),f.r,'-- Semua Reorder Item --',ordRe);
-  fill('mDay',R.filter(r=>ok(r,'d')).map(r=>dayB(r[im])),f.d,'-- Semua Sisa Hari --',agOrd);
-  fill('mPo',R.filter(r=>ok(r,'p')).map(r=>r[ip]),f.p,'-- Semua PO Status --');
+  msSet('mArea',R.filter(r=>ok(r,'a')).map(r=>r[ia]));
+  msSet('mRe',R.filter(r=>ok(r,'r')).map(r=>r[ir]),ordRe);
+  msSet('mDay',R.filter(r=>ok(r,'d')).map(r=>dayB(r[im])),agOrd);
+  msSet('mPo',R.filter(r=>ok(r,'p')).map(r=>r[ip]));Object.assign(f,{a:msVal('mArea'),r:msVal('mRe'),d:msVal('mDay'),p:msVal('mPo')});
   const V=MV=R.filter(r=>ok(r));
   $('mCount').innerHTML='Data tanggal <b>'+fd(MST.date)+'</b> &middot; Menampilkan: <b>'+V.length+'</b> dari '+R.length+' baris data';
   $('mHead').innerHTML='<tr>'+h.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr>';
   $('mBody').innerHTML=V.length?V.map(r=>'<tr>'+r.map((c,i)=>c&&i===ir?'<td><span class="badge" style="background:'+rcol(c)+'">'+esc(c)+'</span></td>':c&&i===ip?'<td><span class="badge" style="background:'+pcol(c)+'">'+esc(c)+'</span></td>':'<td>'+esc(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'" class="text-center text-muted py-4">Tidak ada data yang sesuai filter</td></tr>';
-  const ar=[...new Set(V.map(r=>r[ia]))].sort(),pick=a=>{$('mArea').value=a;renderMaster()};
+  const ar=[...new Set(V.map(r=>r[ia]))].sort(),pick=a=>{MS.mArea.sel=new Set([a]);renderMaster()};
   const mk=(id,ix,cmp,cf)=>{const ks=[...new Set(V.map(r=>r[ix]))].sort(cmp);stack(id,ar,ks.map(k=>({name:k,data:ar.map(a=>V.filter(r=>r[ia]===a&&r[ix]===k).length)})),pick,cf)};
   mk('mChart1',ir,ordRe);mk('mChart2',ip,undefined,pcol);
 }
-function resetMaster(){['mArea','mRe','mDay','mPo','mQ'].forEach(i=>$(i).value='');renderMaster()}
+function resetMaster(){['mArea','mRe','mDay','mPo'].forEach(i=>MS[i].sel.clear());$('mQ').value='';renderMaster()}
 function mDateChange(){
   fetch(apiUrl('&action=master&date='+$('mDate').value)).then(r=>r.json()).then(m=>{
     if(m.error==='UNAUTHORIZED')return logout(true);if(m.error)throw new Error(m.error);
-    MST=m;['mArea','mRe','mDay','mPo'].forEach(i=>$(i).value='');renderMaster();
+    MST=m;['mArea','mRe','mDay','mPo'].forEach(i=>MS[i].sel.clear());renderMaster();
   }).catch(e=>toast('Gagal memuat tanggal: '+e.message,'danger'));
 }
 function exportMaster(t){
@@ -695,6 +703,33 @@ function exportMaster(t){
     d.autoTable({head:[MST.headers],body:MV,startY:20,styles:{fontSize:5,cellPadding:1},headStyles:{fillColor:[2,132,199]}});d.save(n+'.pdf')}
   toast('File berhasil didownload!','success');
 }
+
+/* ===== Dropdown multi-pilih (centang) ===== */
+const MS={};
+const msVal=id=>[...MS[id].sel];
+function msSet(id,vals,cmp){const m=MS[id];m.opts=[...new Set(vals.filter(Boolean))].sort(cmp);m.sel=new Set([...m.sel].filter(v=>m.opts.includes(v)));msDraw(id)}
+function msShown(id){const q=$(id).querySelector('.ms-q').value.trim().toLowerCase();return MS[id].opts.filter(o=>!q||o.toLowerCase().includes(q))}
+function msDraw(id){
+  const m=MS[id],el=$(id),n=m.sel.size,sh=msShown(id);
+  el.querySelector('.ms-btn').textContent=n===0?el.dataset.label:n===1?[...m.sel][0]:n+' dipilih';
+  el.querySelector('.ms-opts').innerHTML=sh.map(o=>'<label class="ms-opt"><input type="checkbox" value="'+esc(o)+'"'+(m.sel.has(o)?' checked':'')+'><span>'+esc(o)+'</span></label>').join('')||'<div class="small text-muted p-2">Tidak ada pilihan</div>';
+}
+['mArea','mRe','mDay','mPo'].forEach(id=>{MS[id]={sel:new Set(),opts:[]};msDraw(id)});
+document.addEventListener('click',e=>{
+  const ms=e.target.closest('.ms');
+  document.querySelectorAll('.ms.open').forEach(x=>{if(x!==ms)x.classList.remove('open')});
+  if(!ms)return;
+  if(e.target.closest('.ms-btn')){ms.classList.toggle('open');return}
+  const a=e.target.closest('[data-act]');
+  if(a){const m=MS[ms.id];if(a.dataset.act==='all')msShown(ms.id).forEach(o=>m.sel.add(o));else m.sel.clear();msDraw(ms.id);renderMaster()}
+});
+document.addEventListener('change',e=>{
+  if(!e.target.matches('.ms-opt input'))return;
+  const ms=e.target.closest('.ms'),m=MS[ms.id];
+  e.target.checked?m.sel.add(e.target.value):m.sel.delete(e.target.value);
+  msDraw(ms.id);renderMaster();
+});
+document.addEventListener('input',e=>{if(e.target.matches('.ms-q'))msDraw(e.target.closest('.ms').id)});
 
 document.addEventListener('DOMContentLoaded',()=>{if(TOKEN){$('loginScreen').classList.add('d-none');setWho();load()}else showLogin()});
 </script>
