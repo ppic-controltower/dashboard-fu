@@ -336,7 +336,7 @@ function parseDMY(s){if(typeof s!=='string')return null;const p=s.split('/');if(
 const isLate=r=>{const d=parseDMY(r[IDX.eta]);return d&&d<today};
 
 /* ===== LOAD DATA (via Apps Script API) ===== */
-const API_URL=''https://script.google.com/macros/s/AKfycbwHCS2gSWe-TzOLQeBw8717Dn0r7D8akr4lRJb1B9RCbfYu17vqCDgxMOubiDyPMT3WkQ/exec'; // URL yang berakhiran /exec'; // URL yang berakhiran /exec
+const API_URL='https://script.google.com/macros/s/AKfycbwHCS2gSWe-TzOLQeBw8717Dn0r7D8akr4lRJb1B9RCbfYu17vqCDgxMOubiDyPMT3WkQ/exec'; // URL yang berakhiran /exec'; // URL yang berakhiran /exec
 const CHECK_EVERY=60000;                       // cek perubahan tiap 60 detik
 let lastVersion=null;
 let TOKEN='',USER='';try{TOKEN=localStorage.getItem('jp_token')||'';USER=localStorage.getItem('jp_user')||''}catch(e){}
