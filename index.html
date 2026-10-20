@@ -336,7 +336,7 @@ function parseDMY(s){if(typeof s!=='string')return null;const p=s.split('/');if(
 const isLate=r=>{const d=parseDMY(r[IDX.eta]);return d&&d<today};
 
 /* ===== LOAD DATA (via Apps Script API) ===== */
-const API_URL='https://script.google.com/macros/s/AKfycbwHCS2gSWe-TzOLQeBw8717Dn0r7D8akr4lRJb1B9RCbfYu17vqCDgxMOubiDyPMT3WkQ/exec'; // URL yang berakhiran /exec
+const API_URL=''https://script.google.com/macros/s/AKfycbwHCS2gSWe-TzOLQeBw8717Dn0r7D8akr4lRJb1B9RCbfYu17vqCDgxMOubiDyPMT3WkQ/exec'; // URL yang berakhiran /exec'; // URL yang berakhiran /exec
 const CHECK_EVERY=60000;                       // cek perubahan tiap 60 detik
 let lastVersion=null;
 let TOKEN='',USER='';try{TOKEN=localStorage.getItem('jp_token')||'';USER=localStorage.getItem('jp_user')||''}catch(e){}
@@ -630,14 +630,16 @@ function renderInv(){
   const hs=q.map((o,i)=>{
     const v=o[NR]||0,pr=i?q[i-1][NR]||0:null;if(pr)gs.push((v-pr)/pr*100);
     const lv=areas.map(a=>[a,pa[a][o.l]||0]).sort((x,y)=>y[1]-x[1]);
-    const top='<span title="'+esc('Top 3: '+lv.slice(0,3).map(x=>x[0]+' '+fm(x[1])).join(' | '))+'"><b>'+esc(lv[0][0])+'</b> '+fm(lv[0][1])+' <span class="text-muted small">('+(v?Math.round(lv[0][1]/v*100):0)+'%)</span></span>';
+    const shr=x=>(v?Math.round(x/v*100):0)+'%';
+    const top='<b>'+esc(lv[0][0])+'</b> '+fm(lv[0][1])+' <span class="text-muted small">('+shr(lv[0][1])+')</span>';
+    const note='Top 3: '+lv.slice(0,3).map(x=>esc(x[0])+' '+fm(x[1])).join(' &middot; ')+' <span class="text-muted">('+shr(lv.slice(0,3).reduce((t,x)=>t+x[1],0))+' dari total)</span>';
     let drv='-';
     if(i){const dd=areas.map(a=>[a,r1((pa[a][o.l]||0)-(pa[a][q[i-1].l]||0))]),up=v>=pr,c=up?dd.filter(x=>x[1]>0):dd.filter(x=>x[1]<0);
       if(c.length){c.sort((x,y)=>up?y[1]-x[1]:x[1]-y[1]);drv='<b>'+esc(c[0][0])+'</b> '+dlt(NR,c[0][1])}}
-    return'<tr><td>'+esc(o.l)+'</td><td class="text-end fw-bold">'+fm(v)+'</td><td class="text-end">'+(pr===null?'-':dlt(NR,r1(v-pr)))+'</td><td class="text-end">'+pct(v,pr)+'</td><td>'+top+'</td><td>'+drv+'</td></tr>'}).reverse();
+    return'<tr><td>'+esc(o.l)+'</td><td class="text-end fw-bold">'+fm(v)+'</td><td class="text-end">'+(pr===null?'-':dlt(NR,r1(v-pr)))+'</td><td class="text-end">'+pct(v,pr)+'</td><td>'+top+'</td><td>'+drv+'</td><td class="small">'+note+'</td></tr>'}).reverse();
   const av=gs.length?gs.reduce((x,y)=>x+y,0)/gs.length:null;
-  $('hisT').innerHTML='Riwayat Need Refill - total semua area (per '+U+')<div class="small text-muted fw-normal mt-1"><b>Penyumbang Terbesar</b> = area dengan Need Refill terbanyak (porsi dari total; arahkan kursor untuk Top 3). <b>Pendorong Perubahan</b> = area yang paling menggerakkan selisih: <span class="text-danger">&#9650;</span> penyebab naik, <span class="text-success">&#9660;</span> penolong turun.</div>';
-  $('invHis').innerHTML='<thead><tr><th>Periode</th><th class="text-end">Need Refill</th><th class="text-end">Selisih</th><th class="text-end">%</th><th>Penyumbang Terbesar</th><th>Pendorong Perubahan</th></tr></thead><tbody>'+hs.join('')+'<tr class="table-light fw-bold"><td colspan="3">Rata-rata kenaikan per '+U+'</td><td class="text-end '+(av===null?'':av>0?'text-danger':'text-success')+'">'+(av===null?'-':(av>0?'+':'')+av.toFixed(1)+'%')+'</td><td colspan="2"></td></tr></tbody>';
+  $('hisT').innerHTML='Riwayat Need Refill - total semua area (per '+U+')<div class="small text-muted fw-normal mt-1"><b>Penyumbang Terbesar</b> = area dengan Need Refill terbanyak (porsi dari total). <b>Pendorong Perubahan</b> = area yang paling menggerakkan selisih: <span class="text-danger">&#9650;</span> penyebab naik, <span class="text-success">&#9660;</span> penolong turun. <b>Note</b> = 3 area terbesar beserta gabungan porsinya.</div>';
+  $('invHis').innerHTML='<thead><tr><th>Periode</th><th class="text-end">Need Refill</th><th class="text-end">Selisih</th><th class="text-end">%</th><th>Penyumbang Terbesar</th><th>Pendorong Perubahan</th><th>Note</th></tr></thead><tbody>'+hs.join('')+'<tr class="table-light fw-bold"><td colspan="3">Rata-rata kenaikan per '+U+'</td><td class="text-end '+(av===null?'':av>0?'text-danger':'text-success')+'">'+(av===null?'-':(av>0?'+':'')+av.toFixed(1)+'%')+'</td><td colspan="3"></td></tr></tbody>';
   // 5. Diagram aging semua status
   const g2=ga(cu.last,''),k2=Object.keys(g2).sort(agOrd),g3={};
   ag.forEach(x=>{if(x[0]===cu.last){const o=g3[x[4]]=g3[x[4]]||{};o[x[3]]=(o[x[3]]||0)+x[5]}});
