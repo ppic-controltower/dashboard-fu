@@ -6,6 +6,7 @@
 <title>Jumpstart - PPIC Control Tower</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -115,6 +116,18 @@ body.collapsed .toolbar{padding-left:50px}
 .ms-opts{max-height:240px;overflow:auto;margin-top:4px}
 .ms-opt{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:.85rem;margin:0}
 .ms-opt:hover{background:#f1f5f9}
+#sbToggle{position:fixed;top:30px;left:265px;z-index:1050;width:30px;height:30px;border-radius:50%;border:1px solid #cbd5e1;background:#fff;color:#0284c7;box-shadow:0 2px 8px rgba(15,23,42,.18);display:flex;align-items:center;justify-content:center;padding:0;font-size:.75rem;cursor:pointer;transition:left .25s,background .15s}
+#sbToggle i{transition:transform .25s}
+#sbToggle:hover{background:#0284c7;color:#fff}
+body.collapsed #sbToggle{left:8px}
+body.collapsed #sbToggle i{transform:rotate(180deg)}
+@media(max-width:991px){#sbToggle{left:8px}#sbToggle i{transform:rotate(180deg)}body.sb-open #sbToggle{left:265px}body.sb-open #sbToggle i{transform:none}}
+/* ruang napas menu samping */
+#sidebar .brand{padding:34px 24px 28px;margin-bottom:20px}
+.brand-logo{margin-bottom:8px}
+.t2{margin-top:6px;letter-spacing:.4px}
+#sidebar nav{padding-top:4px}
+.mi{padding:13px 20px;margin:5px 14px;font-size:.95rem}
 </style>
 </head>
 <body>
@@ -134,7 +147,7 @@ body.collapsed .toolbar{padding-left:50px}
   <aside id="sidebar">
     <div class="brand">
       <div class="ttl"><img class="brand-logo" src="data:image/png;base64,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" alt="Jumpstart"><span class="t2">PPIC Control Tower</span></div>
-      <button class="sb-btn ms-auto" onclick="toggleSidebar()" title="Sembunyikan menu"><i class="fa-solid fa-angles-left"></i></button>
+      
     </div>
     <nav>
       <a href="#" class="mi active" data-page="monitoring"><i class="fa-solid fa-table-list"></i><span>Data Monitoring &amp; Status</span></a>
@@ -146,14 +159,14 @@ body.collapsed .toolbar{padding-left:50px}
     </nav>
   </aside>
   <div id="backdrop" onclick="toggleSidebar()"></div>
-  <button id="openBtn" onclick="toggleSidebar()" title="Tampilkan menu"><i class="fa-solid fa-bars"></i></button>
+  <button id="sbToggle" onclick="toggleSidebar()" title="Sembunyikan / tampilkan menu"><i class="fa-solid fa-chevron-left"></i></button>
   <main id="main">
     <div class="content">
   <div class="toolbar">
     <div class="upd-info"><i class="fa-regular fa-clock me-2"></i>Update terakhir: <b id="updatedAt">-</b></div>
     <div class="d-flex gap-2 align-items-center">
       <div class="who" title="Sedang login"><span class="av"><i class="fa-solid fa-user"></i></span><span class="d-none d-md-inline">Welcome, <b id="whoName">Admin</b></span></div>
-      <button class="btn btn-sm btn-primary px-3 fw-semibold" onclick="load()"><i class="fa-solid fa-rotate me-1"></i>Sync Live Data</button>
+      <button class="btn btn-sm btn-primary px-3 fw-semibold" onclick="load(false,true)"><i class="fa-solid fa-rotate me-1"></i>Sync Live Data</button>
       <button class="btn btn-sm btn-outline-danger px-3 fw-semibold" onclick="logout()" title="Keluar"><i class="fa-solid fa-right-from-bracket me-1"></i>Logout</button>
     </div>
   </div>
@@ -336,7 +349,7 @@ function parseDMY(s){if(typeof s!=='string')return null;const p=s.split('/');if(
 const isLate=r=>{const d=parseDMY(r[IDX.eta]);return d&&d<today};
 
 /* ===== LOAD DATA (via Apps Script API) ===== */
-const API_URL='https://script.google.com/macros/s/AKfycbwHCS2gSWe-TzOLQeBw8717Dn0r7D8akr4lRJb1B9RCbfYu17vqCDgxMOubiDyPMT3WkQ/exec'; // URL yang berakhiran /exec'; // URL yang berakhiran /exec
+const API_URL=(window.JP_CONFIG||{}).API_URL||'https://script.google.com/macros/s/AKfycbwHCS2gSWe-TzOLQeBw8717Dn0r7D8akr4lRJb1B9RCbfYu17vqCDgxMOubiDyPMT3WkQ/exec'; // diisi dari config.js (tidak perlu diubah di sini)
 const CHECK_EVERY=60000;                       // cek perubahan tiap 60 detik
 let lastVersion=null;
 let TOKEN='',USER='';try{TOKEN=localStorage.getItem('jp_token')||'';USER=localStorage.getItem('jp_user')||''}catch(e){}
@@ -344,11 +357,12 @@ function setWho(){const n=USER||'admin';$('whoName').textContent=n.charAt(0).toU
 const apiUrl=extra=>API_URL+'?t='+encodeURIComponent(TOKEN)+(extra||'');
 function showLogin(msg){$('loginScreen').classList.remove('d-none');$('loginErr').textContent=msg||''}
 function logout(expired){
-  TOKEN='';USER='';lastVersion=null;try{localStorage.removeItem('jp_token');localStorage.removeItem('jp_user')}catch(e){}
+  TOKEN='';USER='';lastVersion=null;try{localStorage.removeItem('jp_token');localStorage.removeItem('jp_user');localStorage.removeItem('jp_cache')}catch(e){}
   showLogin(expired===true?'Sesi berakhir, silakan login kembali.':'');
 }
 function doLogin(ev){
   ev.preventDefault();
+  if(!API_URL){$('loginErr').textContent='Alamat server belum diisi: buat file config.js (lihat panduan).';return false}
   const u=$('lgUser').value.trim(),pw=$('lgPass').value,btn=$('lgBtn');
   if(!u||!pw){$('loginErr').textContent='Isi username dan password.';return false}
   btn.disabled=true;btn.textContent='Memeriksa...';$('loginErr').textContent='';
@@ -362,14 +376,15 @@ function doLogin(ev){
   return false;
 }
 
-function load(silent){
+function load(silent,fresh){
   if(!silent)loading(true,'Sinkronisasi data live...');
-  fetch(apiUrl()).then(r=>r.json()).then(d=>{
+  fetch(apiUrl(fresh?'&fresh=1':'')).then(r=>r.json()).then(d=>{
     if(d.error==='UNAUTHORIZED'){loading(false);logout(true);return}
     if(d.error)throw new Error(d.error);
+    try{localStorage.setItem('jp_cache',JSON.stringify(d))}catch(e){}
     if(!d.headers||!d.headers.length){loading(false);toast('Data kosong atau format tidak sesuai.','warning');return}
     H=d.headers;ROWS=d.rows;lastVersion=d.version;$('updatedAt').textContent=d.updatedAt;
-    DISC=d.disc||{headers:[],rows:[]};NOMOV=d.nomov||{headers:[],rows:[]};MST=d.master||MST;INV=d.inv||{agg:[]};resolveCols();apply();loading(false);refreshExtra();
+    DISC=d.disc||{headers:[],rows:[]};NOMOV=d.nomov||{headers:[],rows:[]};MLOAD=false;INV=d.inv||{agg:[]};resolveCols();apply();loading(false);refreshExtra();
     toast(silent?'Data diperbarui otomatis':'Data live berhasil dimuat!',silent?'info':'success');
     if($('pane-schedule').classList.contains('active'))renderAnalytics();
   }).catch(e=>{loading(false);toast('Gagal memuat data: '+e.message,'danger')});
@@ -546,7 +561,7 @@ function toggleSidebar(){document.body.classList.toggle(innerWidth<992?'sb-open'
 function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id==='pane-'+p));
   document.querySelectorAll('.mi').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
-  if(p==='schedule')renderAnalytics();if(p==='master')renderMaster();if(p==='inv')renderInv();if(p==='disc')renderList('d');if(p==='nomov')renderList('n');
+  if(p==='schedule')renderAnalytics();if(p==='master')loadMaster();if(p==='inv')renderInv();if(p==='disc')renderList('d');if(p==='nomov')renderList('n');
   if(innerWidth<992)document.body.classList.remove('sb-open');
 }
 document.querySelectorAll('.mi').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page)}));
@@ -577,7 +592,7 @@ const colIdx=(h,k,fb)=>{const i=h.findIndex(x=>x.toUpperCase().includes(k));retu
 const fm=v=>Number.isInteger(v)?v:v.toFixed(1);
 const bKey=(d,w,p)=>p==='day'?d:p==='week'?d.slice(0,4)+'-'+(w||'W?'):d.slice(0,7);
 const bLab=(d,w,p)=>p==='day'?d.slice(8)+'/'+d.slice(5,7):p==='week'?(w||'W?'):MN[+d.slice(5,7)-1]+' '+d.slice(2,4);
-function refreshExtra(){if($('pane-master').classList.contains('active'))renderMaster();if($('pane-inv').classList.contains('active'))renderInv();if($('pane-disc').classList.contains('active'))renderList('d');if($('pane-nomov').classList.contains('active'))renderList('n')}
+function refreshExtra(){if($('pane-master').classList.contains('active'))loadMaster('',true);if($('pane-inv').classList.contains('active'))renderInv();if($('pane-disc').classList.contains('active'))renderList('d');if($('pane-nomov').classList.contains('active'))renderList('n')}
 function stack(id,labels,series,click,cf){
   if(CH[id])CH[id].destroy();
   const sets=series.filter(s=>s.data.some(v=>v>0)).map(s=>({label:s.name,data:s.data,lbl:'#fff',backgroundColor:(cf||rcol)(s.name),borderRadius:3}));
@@ -691,19 +706,31 @@ function renderMaster(){
   msSet('mDay',R.filter(r=>ok(r,'d')).map(r=>dayB(r[im])),agOrd);
   msSet('mPo',R.filter(r=>ok(r,'p')).map(r=>r[ip]));Object.assign(f,{a:msVal('mArea'),r:msVal('mRe'),d:msVal('mDay'),p:msVal('mPo')});
   const V=MV=R.filter(r=>ok(r));
-  $('mCount').innerHTML='Data tanggal <b>'+fd(MST.date)+'</b> &middot; Menampilkan: <b>'+V.length+'</b> dari '+R.length+' baris data';
+  const sig=JSON.stringify([f.a,f.r,f.d,f.p,f.q,MST.date]);if(sig!==MSIG){MSIG=sig;MLIM=300}
+  $('mCount').innerHTML='Data tanggal <b>'+fd(MST.date)+'</b> &middot; Menampilkan: <b>'+V.length+'</b> dari '+R.length+' baris data'+(V.length>MLIM?' &middot; tabel memuat <b>'+MLIM+'</b> baris pertama (export tetap lengkap) <button class="btn btn-link btn-sm p-0 align-baseline" onclick="mMore()">muat 300 lagi</button> <button class="btn btn-link btn-sm p-0 align-baseline" onclick="mMore(1e9)">semua</button>':'');
   $('mHead').innerHTML='<tr>'+h.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr>';
-  $('mBody').innerHTML=V.length?V.map(r=>'<tr>'+r.map((c,i)=>c&&i===ir?'<td><span class="badge" style="background:'+rcol(c)+'">'+esc(c)+'</span></td>':c&&i===ip?'<td><span class="badge" style="background:'+pcol(c)+'">'+esc(c)+'</span></td>':'<td>'+esc(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'" class="text-center text-muted py-4">Tidak ada data yang sesuai filter</td></tr>';
+  $('mBody').innerHTML=V.length?V.slice(0,MLIM).map(r=>'<tr>'+r.map((c,i)=>c&&i===ir?'<td><span class="badge" style="background:'+rcol(c)+'">'+esc(c)+'</span></td>':c&&i===ip?'<td><span class="badge" style="background:'+pcol(c)+'">'+esc(c)+'</span></td>':'<td>'+esc(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'" class="text-center text-muted py-4">Tidak ada data yang sesuai filter</td></tr>';
   const ar=[...new Set(V.map(r=>r[ia]))].sort(),pick=a=>{MS.mArea.sel=new Set([a]);renderMaster()};
   const mk=(id,ix,cmp,cf)=>{const ks=[...new Set(V.map(r=>r[ix]))].sort(cmp);stack(id,ar,ks.map(k=>({name:k,data:ar.map(a=>V.filter(r=>r[ia]===a&&r[ix]===k).length)})),pick,cf)};
   mk('mChart1',ir,ordRe);mk('mChart2',ip,undefined,pcol);
 }
 function resetMaster(){['mArea','mRe','mDay','mPo'].forEach(i=>MS[i].sel.clear());$('mQ').value='';renderMaster()}
-function mDateChange(){
-  fetch(apiUrl('&action=master&date='+$('mDate').value)).then(r=>r.json()).then(m=>{
+let MLOAD=false,MLIM=300,MSIG='';
+function mDateChange(){loadMaster($('mDate').value)}
+function mMore(n){MLIM=n||MLIM+300;renderMaster()}
+function loadMaster(date,force){
+  if(MLOAD&&!date&&!force){renderMaster();return}
+  $('mCount').textContent='Memuat data Master Inventory...';
+  fetch(apiUrl('&action=master'+(date?'&date='+date:'')+(force?'&fresh=1':''))).then(r=>r.json()).then(m=>{
     if(m.error==='UNAUTHORIZED')return logout(true);if(m.error)throw new Error(m.error);
-    MST=m;['mArea','mRe','mDay','mPo'].forEach(i=>MS[i].sel.clear());renderMaster();
-  }).catch(e=>toast('Gagal memuat tanggal: '+e.message,'danger'));
+    MST=m;MLOAD=true;if(date)['mArea','mRe','mDay','mPo'].forEach(i=>MS[i].sel.clear());renderMaster();
+  }).catch(e=>{$('mCount').textContent='Gagal memuat Master Inventory: '+e.message});
+}
+// Tampilkan data tersimpan (cache lokal) seketika, lalu diperbarui di latar belakang
+function applyCache(){
+  try{const d=JSON.parse(localStorage.getItem('jp_cache')||'null');if(!d||!d.headers||!d.headers.length)return false;
+    H=d.headers;ROWS=d.rows;$('updatedAt').textContent=d.updatedAt+' (tersimpan)';
+    DISC=d.disc||DISC;NOMOV=d.nomov||NOMOV;INV=d.inv||INV;resolveCols();apply();loading(false);refreshExtra();return true}catch(e){return false}
 }
 function exportMaster(t){
   if(!MV.length)return toast('Tidak ada data untuk di-export!','warning');
@@ -741,7 +768,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('input',e=>{if(e.target.matches('.ms-q'))msDraw(e.target.closest('.ms').id)});
 
-document.addEventListener('DOMContentLoaded',()=>{if(TOKEN){$('loginScreen').classList.add('d-none');setWho();load()}else showLogin()});
+document.addEventListener('DOMContentLoaded',()=>{if(TOKEN){$('loginScreen').classList.add('d-none');setWho();load(applyCache())}else showLogin()});
 </script>
 </body>
 </html>
